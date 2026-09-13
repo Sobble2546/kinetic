@@ -1,0 +1,20 @@
+// Source-text operations: length, byte access, comparison, slicing, and
+// building new strings. Strings are immutable byte sequences; slicing and
+// concatenation allocate new NUL-terminated storage for their results.
+
+func main() {
+    let name = "Kinetic"
+
+    print("Text operations:")
+    print(len(name))
+    print(name[0])
+    print(slice(name, 0, 3))
+    print("Hello, " + name + "!")
+
+    if name == "Kinetic" {
+        print("equal")
+    }
+    if "array" < "kinetic" {
+        print("ordered")
+    }
+}

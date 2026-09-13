@@ -39,10 +39,10 @@ class TypeAnalyzer:
             )
 
         for function in program.functions:
-            if function.name == "len":
+            if function.name in ("len", "slice"):
                 location = function.location
                 raise CompileError(
-                    "cannot redefine builtin 'len'",
+                    f"cannot redefine builtin {function.name!r}",
                     location.line if location else None,
                     location.column if location else None,
                 )
@@ -85,6 +85,14 @@ class TypeAnalyzer:
             if not changed:
                 break
 
+        for signature in self.types.values():
+            if signature.result is KType.UNKNOWN:
+                signature.result = KType.VOID
+
+        self._final_validation = True
+        for function in self.program.functions:
+            self._analyze_function(function)
+
         for name, signature in self.types.items():
             if any(kind is KType.UNKNOWN for kind in signature.parameters):
                 function = next(
@@ -96,12 +104,6 @@ class TypeAnalyzer:
                     location.line if location else None,
                     location.column if location else None,
                 )
-            if signature.result is KType.UNKNOWN:
-                signature.result = KType.VOID
-
-        self._final_validation = True
-        for function in self.program.functions:
-            self._analyze_function(function)
 
         return self.types
 
@@ -176,12 +178,20 @@ class TypeAnalyzer:
 
         expected_result = KType.INT if function.name == "main" else last_type
 
-        unified_result = self._unify(
-            signature.result, expected_result, f"return value of {function.name!r}"
-        )
-        if unified_result is not signature.result:
-            signature.result = unified_result
+        if (
+            self._final_validation
+            and signature.result is KType.VOID
+            and expected_result not in (KType.VOID, KType.UNKNOWN)
+        ):
+            signature.result = expected_result
             changed = True
+        else:
+            unified_result = self._unify(
+                signature.result, expected_result, f"return value of {function.name!r}"
+            )
+            if unified_result is not signature.result:
+                signature.result = unified_result
+                changed = True
 
         return changed
 
@@ -379,13 +389,24 @@ class TypeAnalyzer:
             collection_type = self._expr_type(
                 expression.collection, environment, used
             )
-            self._unify(collection_type, KType.INT_ARRAY, "array indexing collection")
-            self._constrain_name(expression.collection, KType.INT_ARRAY, environment)
             index_type = self._expr_type(expression.index, environment, used)
             self._unify(index_type, KType.INT, "array index")
             self._constrain_name(expression.index, KType.INT, environment)
+            if collection_type is KType.UNKNOWN and not self._final_validation:
+                return KType.INT
+            if collection_type is KType.UNKNOWN:
+                self._constrain_name(
+                    expression.collection, KType.INT_ARRAY, environment
+                )
+                collection_type = KType.INT_ARRAY
+            if collection_type not in (KType.INT_ARRAY, KType.STRING):
+                line, column = self._location_of(expression)
+                raise CompileError(
+                    "indexing expects an integer array or string", line, column
+                )
             if (
-                isinstance(expression.collection, NameExpr)
+                collection_type is KType.INT_ARRAY
+                and isinstance(expression.collection, NameExpr)
                 and isinstance(expression.index, NumberExpr)
             ):
                 self._check_constant_bounds(expression, environment)
@@ -424,6 +445,16 @@ class TypeAnalyzer:
     ) -> KType:
         left = self._expr_type(expression.left, environment, used)
         right = self._expr_type(expression.right, environment, used)
+        if KType.STRING in (left, right):
+            return self._string_binary_type(expression, left, right, environment)
+        if (
+            left is KType.UNKNOWN
+            and right is KType.UNKNOWN
+            and not self._final_validation
+        ):
+            if expression.operator in ("==", "<", ">"):
+                return KType.BOOL
+            return KType.UNKNOWN
         if left not in (KType.INT, KType.UNKNOWN) or right not in (
             KType.INT,
             KType.UNKNOWN,
@@ -440,6 +471,37 @@ class TypeAnalyzer:
             return KType.BOOL
         return KType.INT
 
+    def _string_binary_type(
+        self,
+        expression: BinaryExpr,
+        left: KType,
+        right: KType,
+        environment: dict[str, KType],
+    ) -> KType:
+        line, column = self._location_of(expression)
+        for operand_type, operand in (
+            (left, expression.left),
+            (right, expression.right),
+        ):
+            if operand_type is KType.UNKNOWN:
+                self._constrain_name(operand, KType.STRING, environment)
+            elif operand_type is not KType.STRING:
+                raise CompileError(
+                    f"operator {expression.operator!r} requires matching "
+                    "operand types",
+                    line,
+                    column,
+                )
+        if expression.operator in ("==", "<", ">"):
+            return KType.BOOL
+        if expression.operator == "+":
+            return KType.STRING
+        raise CompileError(
+            f"operator {expression.operator!r} is not defined for strings",
+            line,
+            column,
+        )
+
     def _call_type(
         self, expression: CallExpr, environment: dict[str, KType], used: set[int]
     ) -> KType:
@@ -450,19 +512,42 @@ class TypeAnalyzer:
         if expression.callee == "len":
             line, column = self._location_of(expression)
             if len(argument_types) != 1:
-                raise CompileError("len expects exactly one integer array", line, column)
+                raise CompileError(
+                    "len expects exactly one integer array or string", line, column
+                )
             argument_type = argument_types[0]
-            if argument_type not in (KType.INT_ARRAY, KType.UNKNOWN):
-                raise CompileError("len expects exactly one integer array", line, column)
             argument = expression.arguments[0]
-            self._constrain_name(argument, KType.INT_ARRAY, environment)
-            if (
-                self._final_validation
-                and argument_type is KType.UNKNOWN
-                and not isinstance(argument, NameExpr)
-            ):
-                raise CompileError("could not infer array argument to len", line, column)
+            if argument_type is KType.UNKNOWN:
+                if not self._final_validation:
+                    return KType.INT
+                if isinstance(argument, NameExpr):
+                    self._constrain_name(argument, KType.INT_ARRAY, environment)
+                    argument_type = KType.INT_ARRAY
+                else:
+                    raise CompileError(
+                        "could not infer array argument to len", line, column
+                    )
+            if argument_type not in (KType.INT_ARRAY, KType.STRING):
+                raise CompileError(
+                    "len expects exactly one integer array or string", line, column
+                )
             return KType.INT
+        if expression.callee == "slice":
+            line, column = self._location_of(expression)
+            if len(argument_types) != 3:
+                raise CompileError(
+                    "slice expects a string, a start index, and an end index",
+                    line,
+                    column,
+                )
+            contexts = ("slice text", "slice start", "slice end")
+            expected = (KType.STRING, KType.INT, KType.INT)
+            for argument, argument_type, context, wanted in zip(
+                expression.arguments, argument_types, contexts, expected
+            ):
+                self._unify(argument_type, wanted, context)
+                self._constrain_name(argument, wanted, environment)
+            return KType.STRING
         if expression.callee == "print":
             printable_types = (KType.INT, KType.STRING)
             if not self._final_validation:

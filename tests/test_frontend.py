@@ -359,11 +359,11 @@ class ArrayLengthTests(unittest.TestCase):
                 self.assertEqual(diagnostics.warnings, [])
 
     def test_length_rejects_wrong_types_and_arity_with_location(self):
-        for argument in ("", "1", '"abc"', "1 == 1", "[], []", "print(1)"):
+        for argument in ("", "1", "1 == 1", "[], []", "print(1)"):
             with self.subTest(argument=argument):
                 with self.assertRaises(CompileError) as raised:
                     analyze("func main() {\n  print(len(" + argument + "))\n}")
-                self.assertIn("len expects exactly one integer array", str(raised.exception))
+                self.assertIn("len expects exactly one integer array or string", str(raised.exception))
                 self.assertEqual(raised.exception.line, 2)
 
     def test_length_infers_array_parameter_before_caller(self):
@@ -386,7 +386,7 @@ class ArrayLengthTests(unittest.TestCase):
             with self.subTest(body=body):
                 with self.assertRaises(CompileError) as raised:
                     analyze("func main() { print(len(make())) }\nfunc make() { " + body + " }")
-                self.assertIn("len expects exactly one integer array", str(raised.exception))
+                self.assertIn("len expects exactly one integer array or string", str(raised.exception))
 
     def test_length_cannot_be_redefined(self):
         with self.assertRaises(CompileError) as raised:
@@ -414,6 +414,146 @@ class ArrayLengthTests(unittest.TestCase):
             "func main() { let values = make() print(values[0]) }"
         )
         self.assertEqual(types["make"].result.name, "INT_ARRAY")
+
+
+class StringOperationTests(unittest.TestCase):
+    def test_length_accepts_string_literals_and_bindings(self):
+        types, diagnostics = analyze(
+            'func main() { let text = "hello" print(len("abc")) print(len(text)) }'
+        )
+        self.assertEqual(types["main"].result.name, "INT")
+        self.assertEqual(diagnostics.warnings, [])
+
+    def test_length_infers_string_parameter_from_call_site(self):
+        types, _ = analyze(
+            "func size(text) { len(text) }\n"
+            'func main() { print(size("abc")) }'
+        )
+        self.assertEqual(types["size"].parameters[0].name, "STRING")
+        self.assertEqual(types["size"].result.name, "INT")
+
+    def test_length_rejects_integers_and_booleans_with_location(self):
+        for argument in ("5", "1 == 1"):
+            with self.subTest(argument=argument):
+                with self.assertRaises(CompileError) as raised:
+                    analyze("func main() {\n  print(len(" + argument + "))\n}")
+                self.assertIn(
+                    "len expects exactly one integer array or string",
+                    str(raised.exception),
+                )
+                self.assertEqual(raised.exception.line, 2)
+
+    def test_string_index_reads_a_byte_as_an_integer(self):
+        types, _ = analyze('func main() { let text = "ABC" print(text[1]) }')
+        self.assertIn("main", types)
+
+    def test_string_index_infers_string_parameter_from_call_site(self):
+        types, _ = analyze(
+            "func byte_at(text, index) { text[index] }\n"
+            'func main() { print(byte_at("ABC", 1)) }'
+        )
+        self.assertEqual(
+            [kind.name for kind in types["byte_at"].parameters], ["STRING", "INT"]
+        )
+        self.assertEqual(types["byte_at"].result.name, "INT")
+
+    def test_indexing_rejects_non_collections(self):
+        for collection in ("5", "1 == 1"):
+            with self.subTest(collection=collection):
+                with self.assertRaises(CompileError) as raised:
+                    analyze(
+                        "func main() { let value = "
+                        + collection
+                        + " print(value[0]) }"
+                    )
+                self.assertIn(
+                    "indexing expects an integer array or string",
+                    str(raised.exception),
+                )
+
+    def test_string_index_requires_an_integer_index(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze('func main() { let text = "abc" print(text["x"]) }')
+        self.assertIn("type mismatch in array index", str(raised.exception))
+
+    def test_string_comparisons_are_accepted(self):
+        for operator in ("==", "<", ">"):
+            with self.subTest(operator=operator):
+                types, _ = analyze(
+                    'func main() { if "a" '
+                    + operator
+                    + ' "b" { print(1) } }'
+                )
+                self.assertIn("main", types)
+
+    def test_string_comparison_infers_string_parameters(self):
+        types, _ = analyze(
+            "func before(left, right) { left < right }\n"
+            'func main() { if before("a", "b") { print(1) } }'
+        )
+        self.assertEqual(
+            [kind.name for kind in types["before"].parameters], ["STRING", "STRING"]
+        )
+        self.assertEqual(types["before"].result.name, "BOOL")
+
+    def test_mixed_string_and_integer_operands_are_rejected(self):
+        for expression in ('"a" == 1', '1 == "a"', '"a" < 1', '1 > "a"', '"a" + 1', '1 + "a"'):
+            with self.subTest(expression=expression):
+                with self.assertRaises(CompileError) as raised:
+                    analyze("func main() { let value = " + expression + " print(value) }")
+                self.assertIn("requires matching operand types", str(raised.exception))
+
+    def test_string_concatenation_returns_a_string(self):
+        types, _ = analyze(
+            "func combine(left, right) { left + right }\n"
+            'func main() { print(combine("he", "llo")) }'
+        )
+        self.assertEqual(
+            [kind.name for kind in types["combine"].parameters], ["STRING", "STRING"]
+        )
+        self.assertEqual(types["combine"].result.name, "STRING")
+
+    def test_unsupported_string_arithmetic_is_rejected(self):
+        for operator in ("-", "*", "/"):
+            with self.subTest(operator=operator):
+                with self.assertRaises(CompileError) as raised:
+                    analyze('func main() { let value = "a" ' + operator + ' "b" print(value) }')
+                self.assertIn("is not defined for strings", str(raised.exception))
+
+    def test_slice_returns_string_and_infers_text_parameter(self):
+        types, _ = analyze(
+            "func head(text) { slice(text, 0, 2) }\n"
+            'func main() { print(head("hello")) }'
+        )
+        self.assertEqual(types["head"].parameters[0].name, "STRING")
+        self.assertEqual(types["head"].result.name, "STRING")
+
+    def test_slice_checks_arity(self):
+        for arguments in ('"a"', '"a", 0', '"a", 0, 1, 2'):
+            with self.subTest(arguments=arguments):
+                with self.assertRaises(CompileError) as raised:
+                    analyze("func main() { print(slice(" + arguments + ")) }")
+                self.assertIn(
+                    "slice expects a string, a start index, and an end index",
+                    str(raised.exception),
+                )
+
+    def test_slice_checks_argument_types(self):
+        cases = {
+            'slice([1], 0, 1)': "type mismatch in slice text",
+            'slice("a", "b", 1)': "type mismatch in slice start",
+            'slice("a", 0, "b")': "type mismatch in slice end",
+        }
+        for expression, expected in cases.items():
+            with self.subTest(expression=expression):
+                with self.assertRaises(CompileError) as raised:
+                    analyze("func main() { print(" + expression + ") }")
+                self.assertIn(expected, str(raised.exception))
+
+    def test_slice_cannot_be_redefined(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze("func slice(value) { value }\nfunc main() {}")
+        self.assertIn("cannot redefine builtin 'slice'", str(raised.exception))
 
 
 class RunExitStatusTests(unittest.TestCase):
@@ -485,6 +625,7 @@ class DiagnosticExampleTests(unittest.TestCase):
             "04_bounds_checked.kn", "05_mutability.kn",
             "06_status_handling.kn", "07_byte_processing.kn",
             "08_array_lengths.kn", "09_array_lifetimes.kn",
+            "10_text.kn",
         ):
             with self.subTest(example=name):
                 text = Path("examples", name).read_text(encoding="utf-8")

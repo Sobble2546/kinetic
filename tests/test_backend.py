@@ -170,6 +170,86 @@ class BackendTests(unittest.TestCase):
         )
         self.assertIn("extractvalue", llvm_ir)
 
+    def test_string_length_calls_strlen(self):
+        from compiler.compiler import compile_source
+
+        llvm_ir = compile_source(
+            'func main() { let text = "hello" print(len(text)) }'
+        )
+        self.assertIn('declare i64 @"strlen"(i8*', llvm_ir)
+        self.assertIn('call i64 @"strlen"', llvm_ir)
+        self.assertNotIn("extractvalue", llvm_ir)
+
+    def test_string_byte_access_guards_then_loads_and_extends(self):
+        from compiler.compiler import compile_source
+        from llvmlite import binding
+
+        llvm_ir = compile_source(
+            "func byte_at(text, index) { text[index] }\n"
+            'func main() { print(byte_at("ABC", 1)) }'
+        )
+        self.assertIn('declare i64 @"strlen"(i8*', llvm_ir)
+        self.assertIn("bounds.fail", llvm_ir)
+        self.assertIn('call void @"llvm.trap"()', llvm_ir)
+        self.assertIn("zext i8", llvm_ir)
+        with binding.parse_assembly(llvm_ir) as module:
+            function = module.get_function("byte_at")
+            blocks = {block.name: list(block.instructions) for block in function.blocks}
+            self.assertFalse(any(inst.opcode in ("load", "getelementptr") for inst in blocks["bounds.fail"]))
+            self.assertEqual(blocks["bounds.ok"][0].opcode, "getelementptr")
+            self.assertEqual(blocks["bounds.ok"][1].opcode, "load")
+            self.assertEqual(blocks["bounds.ok"][2].opcode, "zext")
+
+    def test_string_comparison_uses_strcmp(self):
+        from compiler.compiler import compile_source
+
+        cases = {"==": "eq", "<": "slt", ">": "sgt"}
+        for operator, predicate in cases.items():
+            with self.subTest(operator=operator):
+                llvm_ir = compile_source(
+                    'func main() { if "a" ' + operator + ' "b" { print(1) } }'
+                )
+                self.assertIn('declare i32 @"strcmp"(i8*', llvm_ir)
+                self.assertIn('call i32 @"strcmp"', llvm_ir)
+                self.assertIn(f"icmp {predicate} i32", llvm_ir)
+
+    def test_string_concatenation_allocates_and_copies(self):
+        from compiler.compiler import compile_source
+
+        llvm_ir = compile_source('func main() { print("he" + "llo") }')
+        self.assertIn('declare i64* @"malloc"(i64', llvm_ir)
+        self.assertIn('declare i8* @"memcpy"(i8*', llvm_ir)
+        self.assertIn('call i64* @"malloc"', llvm_ir)
+        self.assertIn("bitcast i64*", llvm_ir)
+        self.assertIn("alloc.fail", llvm_ir)
+        self.assertEqual(llvm_ir.count('call i8* @"memcpy"'), 2)
+
+    def test_slice_allocates_a_guarded_nul_terminated_copy(self):
+        from compiler.compiler import compile_source
+
+        llvm_ir = compile_source('func main() { print(slice("hello", 1, 3)) }')
+        self.assertIn('declare i64 @"strlen"(i8*', llvm_ir)
+        self.assertIn('declare i64* @"malloc"(i64', llvm_ir)
+        self.assertIn('declare i8* @"memcpy"(i8*', llvm_ir)
+        self.assertIn("bitcast i64*", llvm_ir)
+        self.assertIn("alloc.fail", llvm_ir)
+        self.assertIn("bounds.fail", llvm_ir)
+        self.assertIn('call void @"llvm.trap"()', llvm_ir)
+        self.assertIn("store i8 0", llvm_ir)
+
+    def test_string_results_cross_function_boundaries(self):
+        from compiler.compiler import compile_source
+
+        llvm_ir = compile_source(
+            "func combine(left, right) { left + right }\n"
+            "func head(text) { slice(text, 0, 2) }\n"
+            'func main() { print(head(combine("he", "llo"))) }'
+        )
+        self.assertIn('define i8* @"combine"(i8*', llvm_ir)
+        self.assertIn('call i8* @"combine"', llvm_ir)
+        self.assertIn('define i8* @"head"(i8*', llvm_ir)
+        self.assertIn('call i8* @"head"', llvm_ir)
+
 
 if __name__ == "__main__":
     unittest.main()

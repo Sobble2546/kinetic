@@ -117,7 +117,7 @@ observed local or hosted results, not from configuration or written tests alone.
 
 ### 2. Add the language and runtime building blocks
 
-- [ ] Source-text operations: lengths, byte or character access, comparison,
+- [x] Source-text operations: lengths, byte or character access, comparison,
   slicing, and construction of output strings.
 - [ ] Data structures suitable for compiler records and variants, growable
   buffers, and symbol lookup; choose the minimum useful design before adding features.

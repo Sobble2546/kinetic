@@ -77,7 +77,8 @@ if speed > speed_limit {
 }
 ```
 
-Comparisons in 1.2.1 are limited to equality, less-than, and greater-than.
+Comparisons in 1.2.1 are limited to equality, less-than, and greater-than. They
+work on integers and, bytewise, on strings.
 
 ## 4. Loops (doing things repeatedly)
 
@@ -112,12 +113,14 @@ used for a later constant bounds diagnostic.
 
 Behind the scenes, the LLVM backend uses pointer arithmetic to access array elements. This is a prototype implementation, not a guarantee of memory safety or zero runtime cost.
 
-### Array length
+### Array and string length
 
 [`len()`](../compiler/analyzer.py:450) is a compiler builtin accepting exactly one
-integer array and returning its element count. Strings, integers, booleans,
-missing arguments, and multiple arguments are rejected. An empty array has
-length zero. The name is reserved for the builtin when declaring functions.
+integer array or string. For an array it returns the element count; an empty
+array has length zero. For a string it returns the number of bytes before the
+terminator, matching C's `strlen`. Integers, booleans, missing arguments, and
+multiple arguments are rejected. The name is reserved for the builtin when
+declaring functions.
 
 ```text
 func main() {
@@ -139,7 +142,9 @@ See [array lengths](../examples/08_array_lengths.kn) for a complete example.
 ### Runtime bounds checks
 
 Every indexed read checks that its index is nonnegative and strictly less than
-the current array length. Negative indexes do not count backward. Indexing an
+the current array length. String byte reads apply the same rule against the
+string's byte length, and `slice` validates its start and end against the same
+bounds. Negative indexes do not count backward. Indexing an
 empty array always fails. Known constant out-of-bounds reads remain compile-time
 errors; dynamic invalid reads trap at runtime before the element address is
 computed or read. A trap terminates the process with a platform-dependent failure
@@ -176,7 +181,40 @@ Regenerate IR and native binaries to pick up the lifetime and allocation fixes.
 
 ---
 
-## 6. Status handling and byte processing
+## 6. Strings (working with text)
+
+Strings are immutable byte sequences. Literals embed in the compiled binary;
+operations that build new text allocate NUL-terminated storage at runtime
+through the C library.
+
+```text
+let name = "Kinetic"
+print(len(name))          // 7 bytes
+print(name[0])            // 75, the ASCII byte for 'K'
+print(slice(name, 0, 3))  // "Kin"
+print("Hello, " + name + "!")
+```
+
+- Indexing a string reads one byte as an integer. The same runtime guard as
+  array indexing applies: a negative or out-of-range index traps before the
+  byte is read.
+- `==`, `<`, and `>` compare strings bytewise, like C's `strcmp`. Mixing a
+  string with an integer operand is a compile-time error, and `-`, `*`, `/`
+  are not defined for strings.
+- `+` concatenates two strings into newly allocated storage.
+- `slice(text, start, end)` copies the bytes from `start` up to but not
+  including `end` into a new string. The name is reserved for the builtin when
+  declaring functions. A negative start, an end before the start, or an end
+  past the string's byte length traps at runtime.
+
+Type inference defaults are unchanged: a parameter used only through `len`,
+indexing, or a binary operator, and never constrained by a call site, still
+infers as an integer array or integer. Passing a string at a call site
+constrains the parameter to a string before those defaults apply.
+
+See the [text example](../examples/10_text.kn) for a complete program.
+
+## 7. Status handling and byte processing
 
 The [status example](../examples/06_status_handling.kn) returns an integer from a
 local validation function and branches on success or failure. Zero means success
