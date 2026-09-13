@@ -207,6 +207,11 @@ print("Hello, " + name + "!")
   declaring functions. A negative start, an end before the start, or an end
   past the string's byte length traps at runtime.
 
+Literals cannot contain NUL bytes, escaped or raw; the lexer rejects them
+because runtime storage is NUL-terminated. The function names `printf`,
+`malloc`, `strlen`, `strcmp`, and `memcpy` are reserved for the C runtime
+symbols the backend emits, alongside the builtin names `len` and `slice`.
+
 Type inference defaults are unchanged: a parameter used only through `len`,
 indexing, or a binary operator, and never constrained by a call site, still
 infers as an integer array or integer. Passing a string at a call site

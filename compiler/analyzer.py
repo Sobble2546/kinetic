@@ -38,8 +38,11 @@ class TypeAnalyzer:
                 location.column if location else None,
             )
 
+        reserved_names = (
+            "len", "slice", "printf", "malloc", "strlen", "strcmp", "memcpy"
+        )
         for function in program.functions:
-            if function.name in ("len", "slice"):
+            if function.name in reserved_names:
                 location = function.location
                 raise CompileError(
                     f"cannot redefine builtin {function.name!r}",

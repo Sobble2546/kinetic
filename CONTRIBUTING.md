@@ -107,6 +107,7 @@ python kinetic.py run examples/06_status_handling.kn
 python kinetic.py run examples/07_byte_processing.kn
 python kinetic.py run examples/08_array_lengths.kn
 python kinetic.py run examples/09_array_lifetimes.kn
+python kinetic.py run examples/10_text.kn
 ```
 
 These commands **do compile and execute programs**. Do not use them when a task
