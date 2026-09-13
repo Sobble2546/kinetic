@@ -1,5 +1,5 @@
-// COMPILE-TIME ERROR: len accepts one integer array, not a string.
+// COMPILE-TIME ERROR: len accepts one integer array or string, not an integer.
 
 func main() {
-    print(len("hello"))
+    print(len(5))
 }

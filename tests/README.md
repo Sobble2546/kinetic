@@ -1,6 +1,6 @@
 # Tests
 
-Kinetic 1.2.1 has separate suites for repository structure, frontend behavior,
+Kinetic 1.2.2 has separate suites for repository structure, frontend behavior,
 LLVM generation, and native execution. The native suite runs in hosted CI on
 every push and stays opt-in locally. Run commands below from the repository root.
 
@@ -33,7 +33,7 @@ The [frontend suite](test_frontend.py) imports the lexer, parser, and analyzer
 without needing llvmlite or Clang. It covers locations, migration diagnostics,
 declarations, precedence, entry-point checks, parameter errors, mutability,
 scope-aware warnings, array-length tracking, and deferred function inference.
-It also analyzes all nine numbered examples and checks intentional failures
+It also analyzes all ten numbered examples and checks intentional failures
 and warning examples. This executes compiler frontend code, but does not emit
 IR or run generated programs.
 
@@ -83,7 +83,7 @@ The [native suite](test_native.py) requires Clang and llvmlite. It runs in
 hosted CI on every push; locally it is skipped unless native tests are enabled
 and Clang is available, and opting in without llvmlite is not supported. Each
 test builds in a temporary directory and checks an expected output fragment.
-Coverage includes all nine numbered examples, including the status-handling,
+Coverage includes all ten numbered examples, including the status-handling,
 byte-processing, and returned-array lifetime demonstrations.
 
 Additional native tests check lengths and successful reads across function calls,

@@ -5,7 +5,7 @@ native-service and toolchain contract. Its services are not implemented yet.
 
 | Guide | Audience |
 | --- | --- |
-| [Syntax guide](syntax_guide.md) | Language users learning the 1.2.1 feature set, including array lengths, process-lived storage, and runtime checks. |
+| [Syntax guide](syntax_guide.md) | Language users learning the 1.2.2 feature set, including array lengths, process-lived storage, text operations, and runtime checks. |
 | [Bootstrap host interface](bootstrap_interface.md) | Contributors implementing the proposed native-service boundary. |
 | [Architecture](architecture.md) | Contributors following the compilation pipeline. |
 | [Repository layout](repository_layout.md) | Contributors deciding where code and tooling belong. |

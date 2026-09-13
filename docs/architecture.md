@@ -1,6 +1,6 @@
 # Compiler architecture
 
-Kinetic's 1.2.1 implementation lives in the [compiler source directory](../compiler/README.md).
+Kinetic's 1.2.2 implementation lives in the [compiler source directory](../compiler/README.md).
 It is a flat Python package with separate modules for each compilation stage.
 
 ## Entry points
@@ -53,10 +53,12 @@ The printing builtin is special-cased by both the analyzer and the backend and
 lowers to C's formatted-output function. It accepts exactly one integer or string.
 It is not evidence of a separate runtime or standard library.
 
-The array-length builtin is also handled by both stages. Analysis requires one
-integer array, supports parameter inference, rejects redefinition as a user
-function, and returns an integer type. The backend extracts the count from the
-array value after evaluating the argument once; no external length function is called.
+The length builtin is also handled by both stages. Analysis requires one
+integer array or string, supports parameter inference, rejects redefinition as
+a user function, and returns an integer type. For arrays the backend extracts
+the count from the aggregate after evaluating the argument once; for strings it
+calls C's `strlen`. The `slice` builtin is reserved alongside it: analysis
+requires a string with integer start and end indexes and returns a string.
 
 ## Array representation and read checks
 
@@ -96,6 +98,15 @@ it is not the proposed host adapter's opaque-buffer ABI.
 The CLI preserves nonnegative child exit statuses and maps signal termination
 to failure, so a bounds or allocation trap does not appear as a successful run command.
 
+## String representation and operations
+
+Strings lower to NUL-terminated byte pointers. Literals are private constants;
+indexing reads one byte after the same range guard used for arrays, with the
+loaded byte zero-extended to an integer. `==`, `<`, and `>` lower to C's
+`strcmp` result compared against zero. `+` and `slice` allocate result storage
+with C's `malloc`, copy bytes with `memcpy`, and write the terminating NUL
+byte. The compiler does not track allocation lifetimes for these results.
+
 ## Package organization
 
 The [package initializer](../compiler/__init__.py) exposes the compilation API.
@@ -113,7 +124,7 @@ the repository root; the installed command uses the same code.
 
 The [roadmap](../ROADMAP.md) tracks the language, runtime, and validation work
 needed before Kinetic can host its own compiler. Those planned components are
-not part of the 1.2.1 implementation described here.
+not part of the 1.2.2 implementation described here.
 
 The [bootstrap host interface](bootstrap_interface.md) specifies the future
 native-service boundary, buffer ownership, and textual-IR build protocol. It is

@@ -1,6 +1,6 @@
 # Warning examples
 
-These Kinetic 1.2.1 examples demonstrate nonfatal diagnostics. The compiler emits warnings to
+These Kinetic 1.2.2 examples demonstrate nonfatal diagnostics. The compiler emits warnings to
 stderr to point out code that is probably not what you intended.
 
 Build any of them with:

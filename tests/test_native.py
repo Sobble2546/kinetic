@@ -22,6 +22,7 @@ EXPECTED = {
     "09_array_lifetimes.kn": (
         "Scratch array:\n40\nReturned array:\n7\n8\n9\nReturned length:\n3\n"
     ),
+    "10_text.kn": "Text operations:\n7\n75\nKin\nHello, Kinetic!\nequal\nordered\n",
 }
 
 
@@ -176,6 +177,72 @@ class NativeExampleTests(unittest.TestCase):
         for name in ("out_of_bounds.kn", "negative_index.kn"):
             with self.subTest(example=name):
                 result = self._run_source((root / name).read_text(encoding="utf-8"))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("Unreachable", result.stdout)
+
+    def test_string_operations_produce_expected_values(self):
+        result = self._run_source(
+            "func main() {\n"
+            '  let text = "Kinetic"\n'
+            "  print(len(text))\n"
+            "  print(text[0])\n"
+            "  print(text[6])\n"
+            '  print(slice(text, 0, 3))\n'
+            '  print(slice(text, 3, len(text)))\n'
+            '  print(text + " lang")\n'
+            '  if "abc" < "abd" { print("lt") }\n'
+            '  if "abc" == "abc" { print("eq") }\n'
+            '  if "abd" > "abc" { print("gt") }\n'
+            "}"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout,
+            "7\n75\n99\nKin\netic\nKinetic lang\nlt\neq\ngt\n",
+        )
+
+    def test_string_results_survive_function_calls_and_branches(self):
+        result = self._run_source(
+            "func shout(text) { text + \"!\" }\n"
+            "func first(text) { text[0] }\n"
+            "func pick(flag) { if flag == 1 { \"left\" } else { \"right\" } }\n"
+            "func main() {\n"
+            '  print(shout("hi"))\n'
+            '  print(first("AZ"))\n'
+            "  print(pick(1))\n"
+            "  print(pick(2))\n"
+            '  print(shout(pick(1)))\n'
+            "}"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "hi!\n65\nleft\nright\nleft!\n")
+
+    def test_string_byte_reads_are_mutable_binding_compatible(self):
+        result = self._run_source(
+            "func main() {\n"
+            '  mut text = "ab"\n'
+            "  print(text[1])\n"
+            '  text = "xy"\n'
+            "  print(text[1])\n"
+            "  print(len(text))\n"
+            "}"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "98\n121\n2\n")
+
+    def test_string_bounds_failures_terminate_without_reaching_following_code(self):
+        cases = {
+            "index_upper": 'let text = "ab" let index = 2 print(text[index])',
+            "index_negative": 'let text = "ab" let index = 0 - 1 print(text[index])',
+            "slice_end": 'print(slice("ab", 0, 3))',
+            "slice_order": 'print(slice("ab", 2, 1))',
+            "slice_negative": 'print(slice("ab", 0 - 1, 1))',
+        }
+        for name, body in cases.items():
+            with self.subTest(case=name):
+                result = self._run_source(
+                    "func main() { " + body + ' print("Unreachable") }'
+                )
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn("Unreachable", result.stdout)
 

@@ -4,7 +4,7 @@ A small language compiler, written in Python and targeting LLVM.
 
 [Language guide](docs/syntax_guide.md) · [Architecture](docs/architecture.md) · [Installation](INSTALL.md) · [Contributing](CONTRIBUTING.md) · [Roadmap](ROADMAP.md)
 
-Kinetic is an early compiler prototype (1.2.1). It reads Kinetic source, performs
+Kinetic is an early compiler prototype (1.2.2). It reads Kinetic source, performs
 lexical, syntactic, and type analysis, emits verified textual LLVM IR through
 llvmlite, and uses Clang to produce a native executable.
 
@@ -19,6 +19,7 @@ memory-safety model.
 - Conditional branches and loops.
 - Integer and string values, integer arrays, and array indexing.
 - Array element counts through the length builtin and runtime checks on indexed reads.
+- String length, byte reads, bytewise comparisons, slicing, and concatenation.
 - A built-in printing operation for one integer or string at a time.
 
 Start with the [language guide](docs/syntax_guide.md) and the programs in
@@ -74,7 +75,7 @@ one clear location.
 | --- | --- |
 | [Compiler](compiler/README.md) | A flat Python package containing all compiler stages and the CLI. |
 | [Documentation](docs/README.md) | Language reference, architecture, and repository design. |
-| [Examples](examples/README.md) | Nine numbered programs plus compile-time error, runtime-failure, and warning examples for 1.2.1. |
+| [Examples](examples/README.md) | Ten numbered programs plus compile-time error, runtime-failure, and warning examples for 1.2.2. |
 | [Tools](tools/README.md) | Repository maintenance utilities, separate from the compiler CLI. |
 | [Tests](tests/README.md) | Separate layout, frontend, backend, and opt-in native suites. |
 | [Package configuration](pyproject.toml) | Python packaging and the optional installed command. |
@@ -100,10 +101,20 @@ requests, and manual dispatches. Its Windows/Linux matrix runs the general
 runner on Python 3.10 and 3.14 without installing llvmlite. A separate Ubuntu
 Python 3.10 job installs the runtime dependency and runs frontend/backend tests.
 A third Ubuntu job enables native testing and uses the runner-provided Clang
-toolchain to build and execute all nine numbered examples plus the
+toolchain to build and execute all ten numbered examples plus the
 runtime-failure programs. A passing native job verifies the covered end-to-end
 behavior for that revision; configuration alone is not evidence of success. See
 [contributing](CONTRIBUTING.md).
+
+### New in 1.2.2
+
+Strings gain source-text operations. `len()` reports a string's byte length,
+indexing reads one byte with the same runtime range guard as arrays, `==`/`<`/`>`
+compare bytewise, `+` concatenates into new storage, and the reserved `slice()`
+builtin copies a checked start/end range into new NUL-terminated storage. The
+[text example](examples/10_text.kn) demonstrates each operation. String result
+storage is allocated at runtime and never reclaimed, matching the prototype's
+array-storage simplification rather than a memory-safety model.
 
 ### Fixed in 1.2.1
 
@@ -141,7 +152,7 @@ the native suites on every push. The
 ## Direction
 
 The current goal is to build the foundations needed for a compiler written in
-Kinetic that can compile itself. Version 1.2.1 is not self-hosting yet. The
+Kinetic that can compile itself. Version 1.2.2 is not self-hosting yet. The
 [roadmap](ROADMAP.md) separates completed work, current planning, and future milestones.
 
 ## License

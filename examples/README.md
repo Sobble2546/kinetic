@@ -1,6 +1,6 @@
 # Kinetic examples
 
-These are complete programs for learning and experimenting with the 1.2.1 language.
+These are complete programs for learning and experimenting with the 1.2.2 language.
 
 | Program | Focus |
 | --- | --- |
@@ -13,6 +13,7 @@ These are complete programs for learning and experimenting with the 1.2.1 langua
 | [Byte processing](07_byte_processing.kn) | Count ASCII digits using the array-length builtin. |
 | [Array lengths](08_array_lengths.kn) | Lengths of empty arrays, copies, reassigned bindings, and function arguments/results. |
 | [Array lifetimes](09_array_lifetimes.kn) | Read a locally created array after its helper returns and another helper allocates an array. |
+| [Text operations](10_text.kn) | String length, byte reads, comparisons, slicing, and concatenation. |
 
 Read the [syntax guide](../docs/syntax_guide.md) for the language rules.
 
@@ -52,6 +53,18 @@ Array lengths:
 3
 0
 2
+```
+
+Expected output for the [text example](10_text.kn):
+
+```text
+Text operations:
+7
+75
+Kin
+Hello, Kinetic!
+equal
+ordered
 ```
 
 These are program output expectations, excluding the launcher's build/run

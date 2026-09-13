@@ -1,6 +1,6 @@
 # Error examples
 
-These Kinetic 1.2.1 examples **fail to compile on purpose**. Each demonstrates a specific
+These Kinetic 1.2.2 examples **fail to compile on purpose**. Each demonstrates a specific
 compile-time error so you can see what the diagnostic looks like.
 
 Build any of them with:
@@ -26,7 +26,7 @@ kinetic: error: <line>:<column>: <message>
 | [type_mismatch.kn](type_mismatch.kn) | Mixing an integer and a string in arithmetic. |
 | [main_parameters.kn](main_parameters.kn) | Declaring parameters on the fixed no-argument `main` entry point. |
 | [duplicate_parameters.kn](duplicate_parameters.kn) | Declaring the same parameter name twice in one function. |
-| [len_type.kn](len_type.kn) | Passing a string instead of an integer array to the length builtin. |
+| [len_type.kn](len_type.kn) | Passing an integer instead of an integer array or string to the length builtin. |
 | [len_arity.kn](len_arity.kn) | Calling the length builtin without its required argument. |
 
 See [warnings](../warnings/README.md) for diagnostics that do **not** stop

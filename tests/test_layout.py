@@ -45,6 +45,7 @@ class RepositoryLayoutTests(unittest.TestCase):
             "04_bounds_checked.kn", "05_mutability.kn",
             "06_status_handling.kn", "07_byte_processing.kn",
             "08_array_lengths.kn", "09_array_lifetimes.kn",
+            "10_text.kn",
         ):
             with self.subTest(example=name):
                 self.assertTrue((ROOT / "examples" / name).is_file())

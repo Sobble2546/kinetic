@@ -5,7 +5,7 @@
 Kinetic's next major destination is **self-hosting**: a compiler written in
 Kinetic that can compile its own source and build a working successor compiler.
 
-The current compiler is a Python 1.2.1 prototype. It is not self-hosting, and no
+The current compiler is a Python 1.2.2 prototype. It is not self-hosting, and no
 compiler stage has been ported to Kinetic yet. The language and runtime need
 additional capabilities before that port is practical.
 
@@ -117,7 +117,7 @@ observed local or hosted results, not from configuration or written tests alone.
 
 ### 2. Add the language and runtime building blocks
 
-- [ ] Source-text operations: lengths, byte or character access, comparison,
+- [x] Source-text operations: lengths, byte or character access, comparison,
   slicing, and construction of output strings.
 - [ ] Data structures suitable for compiler records and variants, growable
   buffers, and symbol lookup; choose the minimum useful design before adding features.
