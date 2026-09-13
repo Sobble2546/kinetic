@@ -52,6 +52,19 @@ class LexerTests(unittest.TestCase):
         )
         self.assertEqual(token.value, "a\nb")
 
+    def test_string_with_embedded_nul_is_rejected(self):
+        cases = (
+            r'print("a\0b")',
+            r'print("a\x00b")',
+            'print("a' + chr(0) + 'b")',
+        )
+        for source in cases:
+            with self.subTest(source=source):
+                with self.assertRaises(LexerError) as raised:
+                    tokenize(source)
+                self.assertIn("NUL", str(raised.exception))
+                self.assertEqual(raised.exception.line, 1)
+
 
 class ParserTests(unittest.TestCase):
     def test_declarations_parse_with_mutability(self):
@@ -554,6 +567,15 @@ class StringOperationTests(unittest.TestCase):
         with self.assertRaises(CompileError) as raised:
             analyze("func slice(value) { value }\nfunc main() {}")
         self.assertIn("cannot redefine builtin 'slice'", str(raised.exception))
+
+    def test_backend_runtime_symbols_cannot_be_redefined(self):
+        for name in ("printf", "malloc", "strlen", "strcmp", "memcpy"):
+            with self.subTest(name=name):
+                with self.assertRaises(CompileError) as raised:
+                    analyze("func " + name + "(value) { value }\nfunc main() {}")
+                self.assertIn(
+                    "cannot redefine builtin '" + name + "'", str(raised.exception)
+                )
 
 
 class RunExitStatusTests(unittest.TestCase):

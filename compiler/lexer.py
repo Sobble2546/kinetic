@@ -101,6 +101,9 @@ class Lexer:
         if kind is not TokenKind.STRING:
             return text
         try:
-            return bytes(text[1:-1], "utf-8").decode("unicode_escape")
+            value = bytes(text[1:-1], "utf-8").decode("unicode_escape")
         except UnicodeDecodeError as error:
             raise LexerError("invalid string escape", line, column) from error
+        if "\0" in value:
+            raise LexerError("string literal contains a NUL byte", line, column)
+        return value
