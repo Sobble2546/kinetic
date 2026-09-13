@@ -8,7 +8,7 @@ stages over adding infrastructure intended for a much larger language project.
 - [Installation](INSTALL.md) covers the source-checkout and editable-install workflows.
 - [Architecture](docs/architecture.md) explains the compilation pipeline.
 - [Repository layout](docs/repository_layout.md) explains where changes belong.
-- [Language guide](docs/syntax_guide.md) documents the existing 1.2.1 surface.
+- [Language guide](docs/syntax_guide.md) documents the existing 1.2.2 surface.
 - [Bootstrap host interface](docs/bootstrap_interface.md) defines a future interface, not available builtins.
 - [Roadmap](ROADMAP.md) tracks implemented features and the path toward self-hosting.
 

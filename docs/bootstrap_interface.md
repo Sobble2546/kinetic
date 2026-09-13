@@ -26,7 +26,7 @@ These examples use implemented Kinetic features to demonstrate the concepts.
 They do not call the proposed host adapter. Expected outputs are listed in the
 [example catalog](../examples/README.md).
 
-Kinetic 1.2.1's pointer/count array aggregate is internal to generated programs;
+Kinetic 1.2.2's pointer/count array aggregate is internal to generated programs;
 it is not an opaque host handle and provides no generation validation or session
 ownership. The host ABI design version remains 1 and is independent of the
 compiler release number. Current arrays use unreclaimed, process-lived heap

@@ -1,6 +1,6 @@
 # Runtime bounds failures
 
-These 1.2.1 programs are intentionally **not** success examples. Their index
+These 1.2.2 programs are intentionally **not** success examples. Their index
 expressions pass compile-time analysis, but the generated executable terminates
 at a bounds check before accessing an invalid element.
 

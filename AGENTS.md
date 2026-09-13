@@ -1,6 +1,6 @@
 # Agent guidance
 
-Kinetic is a 1.2.1 prototype language compiler written in Python. It emits textual
+Kinetic is a 1.2.2 prototype language compiler written in Python. It emits textual
 LLVM IR through llvmlite and invokes Clang for native binaries. Keep changes small
 and do not imply that the prototype provides a production memory-safety model.
 
@@ -120,7 +120,7 @@ the bounds check. The CLI propagates failed child exit statuses. Test
 [runtime failures](examples/runtime_errors/README.md)
 separately from success examples when native execution is permitted.
 
-The [syntax guide](docs/syntax_guide.md) documents the 1.2.1 language. The ten
+The [syntax guide](docs/syntax_guide.md) documents the 1.2.2 language. The ten
 numbered [examples](examples/README.md) cover inference, control flow, mutation,
 array lengths/lifetimes, and text operations. Comparisons remain limited to
 equality, less-than, and greater-than.

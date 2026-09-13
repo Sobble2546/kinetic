@@ -1,6 +1,6 @@
 # Compiler architecture
 
-Kinetic's 1.2.1 implementation lives in the [compiler source directory](../compiler/README.md).
+Kinetic's 1.2.2 implementation lives in the [compiler source directory](../compiler/README.md).
 It is a flat Python package with separate modules for each compilation stage.
 
 ## Entry points
@@ -124,7 +124,7 @@ the repository root; the installed command uses the same code.
 
 The [roadmap](../ROADMAP.md) tracks the language, runtime, and validation work
 needed before Kinetic can host its own compiler. Those planned components are
-not part of the 1.2.1 implementation described here.
+not part of the 1.2.2 implementation described here.
 
 The [bootstrap host interface](bootstrap_interface.md) specifies the future
 native-service boundary, buffer ownership, and textual-IR build protocol. It is

@@ -1,6 +1,6 @@
 # Error examples
 
-These Kinetic 1.2.1 examples **fail to compile on purpose**. Each demonstrates a specific
+These Kinetic 1.2.2 examples **fail to compile on purpose**. Each demonstrates a specific
 compile-time error so you can see what the diagnostic looks like.
 
 Build any of them with:
