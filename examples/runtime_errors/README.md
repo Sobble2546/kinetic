@@ -1,6 +1,6 @@
 # Runtime bounds failures
 
-These 1.2.0 programs are intentionally **not** success examples. Their index
+These 1.2.1 programs are intentionally **not** success examples. Their index
 expressions pass compile-time analysis, but the generated executable terminates
 at a bounds check before accessing an invalid element.
 
@@ -25,4 +25,6 @@ The [native suite](../../tests/test_native.py) includes nonzero-exit checks for
 these examples. They are not run during static-only verification. Compare the
 [compile-time failures](../errors/README.md), which are rejected before IR
 generation. Bounds checks do not solve dangling array storage or provide a
-production memory-safety model.
+production memory-safety model. Version 1.2.1 separately fixes returned-array
+lifetimes with unreclaimed heap storage and traps on failed nonempty-array
+allocations; these examples test bounds failures, not allocation failure.

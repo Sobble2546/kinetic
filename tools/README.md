@@ -33,8 +33,9 @@ It returns a nonzero status on failure and does not install dependencies.
 - Native tests require explicit opt-in plus Clang and llvmlite. They build and
   execute programs in temporary directories.
 
-The 1.2.0 suites include array-length inference, descriptor propagation, emitted
-bounds guards, and unsuccessful native exits for invalid indexes. The
+The 1.2.1 suites include array-length inference, descriptor propagation, emitted
+bounds guards, heap-backed element storage, and returned arrays surviving later
+calls, as well as unsuccessful native exits for invalid indexes. The
 [runtime-failure examples](../examples/runtime_errors/README.md) are tested
 separately from successful numbered examples. They must not be run during
 static-only work.

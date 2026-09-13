@@ -5,7 +5,7 @@ native-service and toolchain contract. Its services are not implemented yet.
 
 | Guide | Audience |
 | --- | --- |
-| [Syntax guide](syntax_guide.md) | Language users learning the 1.2.0 feature set, including array lengths and runtime read checks. |
+| [Syntax guide](syntax_guide.md) | Language users learning the 1.2.1 feature set, including array lengths, process-lived storage, and runtime checks. |
 | [Bootstrap host interface](bootstrap_interface.md) | Contributors implementing the proposed native-service boundary. |
 | [Architecture](architecture.md) | Contributors following the compilation pipeline. |
 | [Repository layout](repository_layout.md) | Contributors deciding where code and tooling belong. |
@@ -25,5 +25,7 @@ bootstrap design using the current language. They are not host-service implement
 
 The [array-length example](../examples/08_array_lengths.kn) demonstrates the
 implemented builtin, while [runtime-failure examples](../examples/runtime_errors/README.md)
-show reads that pass analysis but trap when executed. These features do not
-establish array lifetime safety.
+show reads that pass analysis but trap when executed. Version 1.2.1 keeps array
+element storage alive until process exit and traps on failed nonempty-array
+allocations. Storage is not reclaimed, and these fixes do not establish a
+general memory-safety model.

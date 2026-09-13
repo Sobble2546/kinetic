@@ -1,6 +1,6 @@
 # The Kinetic Syntax Guide
 
-This guide describes the 1.2.0 prototype. Kinetic explores readable systems-language syntax, but it does not yet provide a production memory-safety model.
+This guide describes the 1.2.1 prototype. Kinetic explores readable systems-language syntax, but it does not yet provide a production memory-safety model.
 
 Kinetic uses concise declarations and compiles through LLVM. The examples below
 show current syntax, not the proposed bootstrap host-service API.
@@ -36,7 +36,7 @@ counter = counter + 1 // Reassignment has no declaration keyword.
 ```
 
 Binding immutability is not a general guarantee that referenced data is deeply
-immutable or memory-safe. Version 1.2.0 supports integer-array reads, but does not implement
+immutable or memory-safe. Version 1.2.1 supports integer-array reads, but does not implement
 indexed assignment or a production memory-safety model.
 
 ## 2. Functions (doing things)
@@ -49,7 +49,7 @@ func calculate_speed(distance, time) {
 }
 ```
 
-The `main` function is the entry point of your program. In the 1.2.0 prototype it has a fixed no-argument entry shape; declaring parameters on `main` is a compile-time error. When you run your executable, this is where the action starts.
+The `main` function is the entry point of your program. In the 1.2.1 prototype it has a fixed no-argument entry shape; declaring parameters on `main` is a compile-time error. When you run your executable, this is where the action starts.
 
 ```text
 func main() {
@@ -77,7 +77,7 @@ if speed > speed_limit {
 }
 ```
 
-Comparisons in 1.2.0 are limited to equality, less-than, and greater-than.
+Comparisons in 1.2.1 are limited to equality, less-than, and greater-than.
 
 ## 4. Loops (doing things repeatedly)
 
@@ -94,7 +94,7 @@ while i < 3 {
 
 ## 5. Arrays (lists of things)
 
-Version 1.2.0 arrays contain integers. Array literals and indexed reads are supported;
+Version 1.2.1 arrays contain integers. Array literals and indexed reads are supported;
 arrays of strings and mixed element types are not part of the current language.
 
 ```text
@@ -151,17 +151,28 @@ These checks apply to literal arrays, aliases, mutable bindings, and array
 parameters, including after control-flow merges. They protect the index range,
 not the validity of an already dangling pointer.
 
-Array literals allocate element storage from the C heap at the point of
-construction, and that storage lives until the process exits. Returning a
-locally created array from a helper is therefore well-defined: the data
-pointer and count in the returned aggregate stay valid for the rest of the
-program. The prototype never reuses or frees this storage, so every array
-construction leaks memory by design. This is a deliberate simplification, not
-a production memory-safety model.
+### Array storage and allocation failure
+
+Since 1.2.1, array literals allocate element storage from the C heap at the point
+of construction, and that storage lives until the process exits. Returning a
+locally created array from a helper is therefore well-defined: the data pointer
+and count in the returned aggregate stay valid for the rest of the program.
+The prototype never reuses or frees this storage, so repeated construction leaks
+memory by design. This is a deliberate simplification, not a production
+memory-safety model.
+
+The [array-lifetime example](../examples/09_array_lifetimes.kn) demonstrates
+returned local arrays remaining valid after another helper allocates an array.
+
+If allocation for a nonempty array returns a null pointer, the executable traps
+before evaluating or storing any elements. Like a bounds trap, this terminates
+the process rather than returning a recoverable status or a formatted diagnostic.
+An empty array may have a null data pointer without an allocation trap; its length
+remains zero and every indexed read is rejected by the bounds check.
 
 There is still no resizing, indexed assignment, or general ownership model.
-The internal LLVM array representation changed in 1.2.0; regenerate IR and
-native binaries rather than mixing releases.
+The pointer/count representation introduced in 1.2.0 is unchanged in 1.2.1.
+Regenerate IR and native binaries to pick up the lifetime and allocation fixes.
 
 ---
 

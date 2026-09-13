@@ -19,6 +19,9 @@ EXPECTED = {
     "06_status_handling.kn": "Byte accepted\nInvalid byte\n",
     "07_byte_processing.kn": "ASCII digits:\n3\n",
     "08_array_lengths.kn": "Array lengths:\n3\n2\n3\n0\n2\n",
+    "09_array_lifetimes.kn": (
+        "Scratch array:\n40\nReturned array:\n7\n8\n9\nReturned length:\n3\n"
+    ),
 }
 
 

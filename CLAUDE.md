@@ -7,7 +7,7 @@ truth for repository structure, compiler boundaries, and verification rules.
 
 ## Working context
 
-- Kinetic is a 1.2.0 prototype compiler written in Python, using llvmlite and Clang.
+- Kinetic is a 1.2.1 prototype compiler written in Python, using llvmlite and Clang.
 - Compiler modules live directly in the [compiler package](compiler/README.md).
   Keep imports package-relative and avoid adding wrapper packages.
 - The [root launcher](kinetic.py) delegates to the same CLI as the installed command.
@@ -40,12 +40,13 @@ local and hosted test logic aligned.
 Read [ROADMAP.md](ROADMAP.md) when planning language work. Self-hosting is a future
 target, not an existing capability. Keep implemented functionality, planning,
 and future work distinct; do not mark a milestone complete without evidence.
-The 1.2.0 prototype does not provide a production memory-safety model. Array
+The 1.2.1 prototype does not provide a production memory-safety model. Array
 lengths and runtime read guards are implemented; array element storage is
 heap-allocated and lives until process exit without reclamation, which is a
-deliberate leak rather than lifetime safety. Report behavioral verification based on
-what was actually run: locally skipped suites are not passing verification,
-while the hosted native CI job records end-to-end execution on each push.
+deliberate leak rather than a general lifetime-safety model. Failed nonempty-array
+allocations trap before initialization. Report behavioral verification based on
+what actually passed: skipped suites and CI configuration alone are not passing
+verification. Use the results of the corresponding hosted native run as evidence.
 
 The [bootstrap contract](docs/bootstrap_interface.md) describes proposed native
 services, not implemented functionality. Keep explanations in documentation and

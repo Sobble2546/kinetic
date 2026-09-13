@@ -1,6 +1,6 @@
 # Agent guidance
 
-Kinetic is a 1.2.0 prototype language compiler written in Python. It emits textual
+Kinetic is a 1.2.1 prototype language compiler written in Python. It emits textual
 LLVM IR through llvmlite and invokes Clang for native binaries. Keep changes small
 and do not imply that the prototype provides a production memory-safety model.
 
@@ -72,6 +72,7 @@ python kinetic.py run examples/05_mutability.kn
 python kinetic.py run examples/06_status_handling.kn
 python kinetic.py run examples/07_byte_processing.kn
 python kinetic.py run examples/08_array_lengths.kn
+python kinetic.py run examples/09_array_lifetimes.kn
 ```
 
 **If the user asks not to compile or run programs, do not invoke these commands,
@@ -106,14 +107,18 @@ Every indexed read has a runtime range guard before element address calculation
 and loading; failure traps. Preserve both fields through copying/reassignment
 and do not equate bounds checking with lifetime safety. Array element storage
 is heap-allocated at construction and lives until process exit; it is never
-freed or reused, so returning locally created arrays is well-defined but every
-construction leaks — do not describe this as reclamation or a memory-safety model. The CLI propagates failed
-child exit statuses. Test [runtime failures](examples/runtime_errors/README.md)
+freed or reused, so returning locally created arrays is well-defined but repeated
+construction leaks — do not describe this as reclamation or a memory-safety model.
+A failed nonempty-array allocation traps before element initialization. Empty
+arrays may have null data pointers; their length is zero and every read fails
+the bounds check. The CLI propagates failed child exit statuses. Test
+[runtime failures](examples/runtime_errors/README.md)
 separately from success examples when native execution is permitted.
 
-The [syntax guide](docs/syntax_guide.md) documents the 1.2.0 language. The eight
+The [syntax guide](docs/syntax_guide.md) documents the 1.2.1 language. The nine
 numbered [examples](examples/README.md) cover inference, control flow, mutation,
-and arrays. Comparisons remain limited to equality, less-than, and greater-than.
+and array lengths/lifetimes. Comparisons remain limited to equality, less-than,
+and greater-than.
 
 Declarations use [`func`](compiler/lexer.py:33) for functions,
 [`let`](compiler/lexer.py:34) for immutable bindings, and standalone

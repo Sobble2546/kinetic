@@ -1,6 +1,6 @@
 # Tests
 
-Kinetic 1.2.0 has separate suites for repository structure, frontend behavior,
+Kinetic 1.2.1 has separate suites for repository structure, frontend behavior,
 LLVM generation, and native execution. The native suite runs in hosted CI on
 every push and stays opt-in locally. Run commands below from the repository root.
 
@@ -33,7 +33,7 @@ The [frontend suite](test_frontend.py) imports the lexer, parser, and analyzer
 without needing llvmlite or Clang. It covers locations, migration diagnostics,
 declarations, precedence, entry-point checks, parameter errors, mutability,
 scope-aware warnings, array-length tracking, and deferred function inference.
-It also analyzes all eight numbered examples and checks intentional failures
+It also analyzes all nine numbered examples and checks intentional failures
 and warning examples. This executes compiler frontend code, but does not emit
 IR or run generated programs.
 
@@ -58,10 +58,14 @@ This is compilation to IR, even though it does not build or run native binaries.
 
 Array tests inspect metadata construction/extraction, aggregate stores/loads,
 forwarding, empty arrays, shadowing, control-flow integration, and heap
-allocation of element storage. Structural
-LLVM assertions check that the failure block traps and that element pointer
-arithmetic and loads appear only after the bounds branch. These backend tests
-require IR generation; they are not part of static-only verification.
+allocation of element storage. Structural LLVM assertions check that the bounds
+failure block traps and that element pointer arithmetic and loads appear only
+after the bounds branch. These backend tests require IR generation; they are
+not part of static-only verification.
+
+The backend also traps on failed nonempty-array allocations, but the current
+suites do not force allocation failure or directly assert that failure path.
+Do not describe the heap-storage tests as allocation-failure coverage.
 
 ## General runner
 
@@ -79,15 +83,16 @@ The [native suite](test_native.py) requires Clang and llvmlite. It runs in
 hosted CI on every push; locally it is skipped unless native tests are enabled
 and Clang is available, and opting in without llvmlite is not supported. Each
 test builds in a temporary directory and checks an expected output fragment.
-Coverage includes all eight numbered examples, including the status-handling
-and byte-processing demonstrations.
+Coverage includes all nine numbered examples, including the status-handling,
+byte-processing, and returned-array lifetime demonstrations.
 
 Additional native tests check lengths and successful reads across function calls,
 copies, and reassignment, including locally created arrays returned from helpers
 and read after later calls; they also check nonzero exits for negative,
-upper-bound, empty-array, shortened-array, and returned-array accesses. Runtime-failure examples are compiled
-and executed separately. Trap status is checked as nonzero rather than assuming
-a specific platform's signal number.
+upper-bound, empty-array, shortened-array, and out-of-bounds returned-array
+accesses. Runtime-failure examples are compiled and executed separately. Trap
+status is checked as nonzero rather than assuming a specific platform's signal
+number.
 
 PowerShell:
 
@@ -118,6 +123,6 @@ Clang toolchain to build and execute every numbered example, the array metadata
 checks, and the runtime-failure programs with nonzero-exit expectations.
 
 Report passed, failed, and skipped suites separately. A green layout check does
-not prove compiler behavior, and a locally skipped native suite is not passing
-behavioral verification — the hosted native job is. Keep future regression tests
-in these shared suites instead of duplicating assertions in CI.
+not prove compiler behavior. Only an observed passing native run verifies the
+covered native behavior; a skipped suite or configured job does not. Keep future
+regression tests in these shared suites instead of duplicating assertions in CI.

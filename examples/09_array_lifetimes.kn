@@ -1,0 +1,25 @@
+// Returned arrays remain valid after their creating helper finishes.
+// Element storage lives until process exit and is not reclaimed.
+
+func make_values() {
+    let values = [7, 8, 9]
+    values
+}
+
+func use_scratch() {
+    let scratch = [40, 41, 42, 43, 44, 45, 46, 47]
+    print("Scratch array:")
+    print(scratch[0])
+}
+
+func main() {
+    let values = make_values()
+    use_scratch()
+
+    print("Returned array:")
+    print(values[0])
+    print(values[1])
+    print(values[2])
+    print("Returned length:")
+    print(len(values))
+}

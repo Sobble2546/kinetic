@@ -4,7 +4,7 @@ A small language compiler, written in Python and targeting LLVM.
 
 [Language guide](docs/syntax_guide.md) · [Architecture](docs/architecture.md) · [Installation](INSTALL.md) · [Contributing](CONTRIBUTING.md) · [Roadmap](ROADMAP.md)
 
-Kinetic is an early compiler prototype (1.2.0). It reads Kinetic source, performs
+Kinetic is an early compiler prototype (1.2.1). It reads Kinetic source, performs
 lexical, syntactic, and type analysis, emits verified textual LLVM IR through
 llvmlite, and uses Clang to produce a native executable.
 
@@ -74,7 +74,7 @@ one clear location.
 | --- | --- |
 | [Compiler](compiler/README.md) | A flat Python package containing all compiler stages and the CLI. |
 | [Documentation](docs/README.md) | Language reference, architecture, and repository design. |
-| [Examples](examples/README.md) | Eight numbered programs plus compile-time error, runtime-failure, and warning examples for 1.2.0. |
+| [Examples](examples/README.md) | Nine numbered programs plus compile-time error, runtime-failure, and warning examples for 1.2.1. |
 | [Tools](tools/README.md) | Repository maintenance utilities, separate from the compiler CLI. |
 | [Tests](tests/README.md) | Separate layout, frontend, backend, and opt-in native suites. |
 | [Package configuration](pyproject.toml) | Python packaging and the optional installed command. |
@@ -100,9 +100,24 @@ requests, and manual dispatches. Its Windows/Linux matrix runs the general
 runner on Python 3.10 and 3.14 without installing llvmlite. A separate Ubuntu
 Python 3.10 job installs the runtime dependency and runs frontend/backend tests.
 A third Ubuntu job enables native testing and uses the runner-provided Clang
-toolchain to build and execute all eight numbered examples plus the
-runtime-failure programs, so every push is verified end to end. See
+toolchain to build and execute all nine numbered examples plus the
+runtime-failure programs. A passing native job verifies the covered end-to-end
+behavior for that revision; configuration alone is not evidence of success. See
 [contributing](CONTRIBUTING.md).
+
+### Fixed in 1.2.1
+
+Array element storage now lives on the heap until process exit, so helpers can
+return locally created arrays without leaving their callers with stack-backed
+data. A failed allocation for a nonempty array traps before any elements are
+initialized. Empty arrays remain valid length-zero values.
+
+This is a patch release for existing array behavior; source syntax is unchanged.
+Storage is never reclaimed, so repeated construction leaks memory. These fixes
+do not introduce garbage collection, ownership checking, or a production
+memory-safety model. The [array-lifetime example](examples/09_array_lifetimes.kn)
+demonstrates returned data surviving later calls. See
+[array semantics](docs/syntax_guide.md) for details.
 
 ### New in 1.2.0
 
@@ -126,7 +141,7 @@ the native suites on every push. The
 ## Direction
 
 The current goal is to build the foundations needed for a compiler written in
-Kinetic that can compile itself. Version 1.2.0 is not self-hosting yet. The
+Kinetic that can compile itself. Version 1.2.1 is not self-hosting yet. The
 [roadmap](ROADMAP.md) separates completed work, current planning, and future milestones.
 
 ## License

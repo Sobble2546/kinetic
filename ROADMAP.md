@@ -5,7 +5,7 @@
 Kinetic's next major destination is **self-hosting**: a compiler written in
 Kinetic that can compile its own source and build a working successor compiler.
 
-The current compiler is a Python 1.2.0 prototype. It is not self-hosting, and no
+The current compiler is a Python 1.2.1 prototype. It is not self-hosting, and no
 compiler stage has been ported to Kinetic yet. The language and runtime need
 additional capabilities before that port is practical.
 
@@ -50,16 +50,20 @@ runner on Windows and Linux without installing llvmlite. A separate Ubuntu job
 installs the dependency and runs frontend/backend tests. A third Ubuntu job
 enables native testing and uses the runner-provided Clang toolchain to build
 and execute every numbered example, the array metadata checks, and the
-runtime-failure programs with nonzero-exit expectations. Hosted logs now cover
-frontend behavior, IR generation, and native end-to-end execution.
+runtime-failure programs with nonzero-exit expectations. Use the results of the
+corresponding hosted run to establish which checks actually passed.
 
-### Array-size handling and runtime read checks
+### Array sizes, lifetimes, and runtime checks
 
-The 1.2.0 implementation adds a pointer/count array representation, an
+The 1.2.0 implementation added a pointer/count array representation, an
 integer-array length builtin, and runtime lower/upper-bound checks before
 indexed reads. Metadata travels through copies, reassignment, and function calls.
 The [byte-processing](examples/07_byte_processing.kn) and
 [array-length](examples/08_array_lengths.kn) programs exercise these changes.
+
+Version 1.2.1 fixes returned-array lifetimes with heap-allocated element storage
+that lives until process exit. Failed allocations for nonempty arrays trap
+before initialization; empty arrays remain valid length-zero values.
 
 Frontend, LLVM-structure, native-output, runtime-failure, and CLI-exit regression
 tests are defined, and the hosted native CI job executes the native suites on
@@ -95,24 +99,21 @@ sequence; their implementations remain future work.
   hints, warning emission, and summary pluralization).
 - [x] Add focused regressions for scoping, inference, immutability, constant array
   bounds, and error handling in the existing language.
-- [x] Complete the semantic specification and regression coverage for array
-  lifetimes, dynamic bounds, and function results before treating the bootstrap
-  baseline as reliable (element storage is heap-allocated, lives until process
-  exit, and is never reclaimed; regression tests pin returned local arrays,
-  dynamic bounds, and function results).
-- [x] Define the supported toolchain versions (llvmlite pinned in
+- [x] Specify prototype array lifetimes and add regression coverage for returned
+  local arrays, dynamic bounds, and function results. Element storage is
+  heap-allocated in 1.2.1, lives until process exit, and is never reclaimed.
+- [x] Define the supported toolchain versions (llvmlite constrained to the 0.45 series in
   [requirements.txt](requirements.txt), Python 3.10+, Clang for native builds)
   and a repeatable verification workflow ([static, behavioral, and native CI](.github/workflows/ci.yml)).
-- [x] Build and run the native example suite in hosted CI with Clang and native
+- [x] Configure hosted CI to build and run the native example suite with Clang and native
   testing enabled; the Ubuntu native job exercises every numbered example and
   the runtime-failure programs on each push.
 
-**Verification status:** complete. Hosted CI covers frontend behavior, verified
-IR generation, and native end-to-end execution. Array lifetime semantics are
-specified and pinned by regression tests: element storage is heap-allocated,
-lives until process exit, and is never reclaimed, so locally created arrays may
-be returned from helpers; dynamic bounds and function results are covered
-across the frontend, backend, and native suites.
+**Verification coverage:** the shared frontend, backend, and native suites cover
+returned local arrays, dynamic bounds, and function results and are enabled in
+hosted CI. The allocation-failure trap is implemented, but the current suites
+do not force allocator failure. Passing verification must be established from
+observed local or hosted results, not from configuration or written tests alone.
 
 ### 2. Add the language and runtime building blocks
 
@@ -123,9 +124,9 @@ across the frontend, backend, and native suites.
 - [ ] Mutable indexed storage.
 - [ ] Validate and close explicit collection-size handling and runtime read
   guards: the length builtin, array metadata, and read checks are implemented
-  in 1.2.0 and covered by hosted frontend, backend, and native CI; lifetime
-  rules are now defined (heap-allocated, process-lived, unreclaimed storage),
-  and the remaining semantic work is defining mutation rules around them.
+  since 1.2.0 and covered by the suites selected in hosted CI. Version 1.2.1
+  defines process-lived, unreclaimed heap storage and traps on failed nonempty
+  allocations; mutation rules and allocation-failure regression coverage remain.
 - [ ] Defined allocation and lifetime rules for compiler-owned data, with checks
   appropriate to the chosen design.
 - [ ] File input/output, command-line arguments, diagnostics, and error/status reporting.

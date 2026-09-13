@@ -1,6 +1,6 @@
 # Kinetic examples
 
-These are complete programs for learning and experimenting with the 1.2.0 language.
+These are complete programs for learning and experimenting with the 1.2.1 language.
 
 | Program | Focus |
 | --- | --- |
@@ -12,6 +12,7 @@ These are complete programs for learning and experimenting with the 1.2.0 langua
 | [Status-code handling](06_status_handling.kn) | Validate a byte and handle the returned success or failure status. |
 | [Byte processing](07_byte_processing.kn) | Count ASCII digits using the array-length builtin. |
 | [Array lengths](08_array_lengths.kn) | Lengths of empty arrays, copies, reassigned bindings, and function arguments/results. |
+| [Array lifetimes](09_array_lifetimes.kn) | Read a locally created array after its helper returns and another helper allocates an array. |
 
 Read the [syntax guide](../docs/syntax_guide.md) for the language rules.
 
@@ -55,8 +56,28 @@ Array lengths:
 
 These are program output expectations, excluding the launcher's build/run
 messages. The hosted native CI job builds and runs every numbered example with
-Clang on each push and asserts these outputs; locally the native suite remains
+Clang on each push and checks for the expected output fragments; locally the native suite remains
 opt-in via `KINETIC_NATIVE_TESTS=1`.
+
+## Returned array lifetimes
+
+The [array-lifetime example](09_array_lifetimes.kn) returns a locally created
+array, calls another helper that allocates scratch storage, then prints the
+original elements and length. The original data remains valid because array
+element storage lives until process exit; it is not reclaimed.
+
+Expected output:
+
+```text
+Scratch array:
+40
+Returned array:
+7
+8
+9
+Returned length:
+3
+```
 
 ## Diagnostic examples
 
@@ -76,7 +97,9 @@ binding's pointer and length together without changing an earlier copy's length.
 Element storage is heap-allocated at construction and lives until the process
 exits, so returning a locally created array is well-defined; the prototype never
 reclaims this storage and leaks it by design. Bounds checks protect the index
-range, not reclamation or a general memory-safety model.
+range, not reclamation or a general memory-safety model. A failed allocation for
+a nonempty array traps before initialization. The runtime-failure examples above
+exercise invalid reads, not allocation failure.
 
 ## Running an example
 

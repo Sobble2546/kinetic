@@ -1,6 +1,6 @@
 # Installing and running Kinetic
 
-These instructions describe Kinetic 1.2.0. The version is declared in
+These instructions describe Kinetic 1.2.1. The version is declared in
 [package configuration](pyproject.toml).
 
 ## Requirements
@@ -70,18 +70,22 @@ that warning is not a build failure.
 Common generated outputs are covered by [.gitignore](.gitignore). Remove artifacts
 after manual verification, especially binaries from newly added examples.
 
-The [example catalog](examples/README.md) includes eight valid numbered programs,
+The [example catalog](examples/README.md) includes nine valid numbered programs,
 compile-time failures, runtime bounds failures, and warning demonstrations. The bootstrap status and byte
 examples use the existing language; the proposed host services are not installed
 by these setup commands.
 
-Regenerate existing IR and binaries when upgrading to 1.2.0: the compiler's
-internal array representation now includes a length alongside the pointer.
-No additional dependency is needed for array lengths or runtime read guards.
-An invalid runtime index traps and returns failure from the run command; the
-exact native exit status or signal is platform-dependent. The runtime-failure
-examples are intentionally unsuccessful and must not be included in a
-success-only build-and-run loop.
+Regenerate existing IR and binaries when upgrading to 1.2.1 to pick up the
+heap-backed array-lifetime and allocation-failure fixes. The pointer/count
+representation introduced in 1.2.0 is unchanged. Array storage now lives until
+process exit and is not reclaimed; failed nonempty-array allocations trap before
+initialization. These fixes use the existing C runtime and add no dependency to
+the installation steps.
+
+An invalid runtime index or failed nonempty-array allocation traps and returns
+failure from the run command; the exact native exit status or signal is
+platform-dependent. The runtime-failure examples demonstrate bounds failures
+and must not be included in a success-only build-and-run loop.
 
 ## Static checks without a compiler toolchain
 

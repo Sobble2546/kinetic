@@ -27,6 +27,7 @@ kinetic_app
 /examples/06_status_handling
 /examples/07_byte_processing
 /examples/08_array_lengths
+/examples/09_array_lifetimes
 /examples/warnings/unused_variable
 /examples/warnings/shadowing
 /examples/runtime_errors/out_of_bounds

@@ -8,7 +8,7 @@ stages over adding infrastructure intended for a much larger language project.
 - [Installation](INSTALL.md) covers the source-checkout and editable-install workflows.
 - [Architecture](docs/architecture.md) explains the compilation pipeline.
 - [Repository layout](docs/repository_layout.md) explains where changes belong.
-- [Language guide](docs/syntax_guide.md) documents the existing 1.2.0 surface.
+- [Language guide](docs/syntax_guide.md) documents the existing 1.2.1 surface.
 - [Bootstrap host interface](docs/bootstrap_interface.md) defines a future interface, not available builtins.
 - [Roadmap](ROADMAP.md) tracks implemented features and the path toward self-hosting.
 
@@ -39,6 +39,11 @@ function calls, and value-producing branches. Runtime read checks must dominate
 element pointer arithmetic and loads. Cover empty arrays, negative and upper
 bounds, changing lengths, and failure exit statuses in regression tests. Bounds
 checks do not replace a lifetime model or justify a general memory-safety claim.
+
+Array elements use heap storage that remains allocated until process exit, so
+returning local arrays is supported but repeated construction leaks. Preserve
+the trap before initialization when a nonempty-array allocation fails, and keep
+empty arrays valid even if their zero-size allocation returns a null pointer.
 
 ## Static verification
 
@@ -84,7 +89,8 @@ rather than duplicating it in CI.
 
 Run checks locally for fast feedback; CI makes them repeatable for every change.
 A green static job does not replace compiler-behavior verification, but the
-hosted native job provides end-to-end execution evidence on every push.
+results of a passing hosted native job provide end-to-end evidence for the
+covered cases at that revision. Merely configuring a job does not prove it passed.
 
 ## Compiler verification, when builds are appropriate
 
@@ -100,6 +106,7 @@ python kinetic.py run examples/05_mutability.kn
 python kinetic.py run examples/06_status_handling.kn
 python kinetic.py run examples/07_byte_processing.kn
 python kinetic.py run examples/08_array_lengths.kn
+python kinetic.py run examples/09_array_lifetimes.kn
 ```
 
 These commands **do compile and execute programs**. Do not use them when a task
