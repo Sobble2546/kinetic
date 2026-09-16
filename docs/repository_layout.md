@@ -30,7 +30,7 @@ examples, and repository maintenance.
 | [Roadmap](../ROADMAP.md) | Completed work, current priorities, and future milestones. |
 | [License](../LICENSE) | Project licensing. |
 
-The compiler sources remain a flat package in release 1.2.2. The
+The compiler sources remain a flat package in release 1.3.0. The
 [bootstrap host interface](bootstrap_interface.md) lives in documentation because
 it is a design contract, not an implemented runtime package. Its current-syntax
 examples belong alongside the other numbered programs, with intentional

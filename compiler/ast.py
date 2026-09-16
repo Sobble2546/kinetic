@@ -73,6 +73,14 @@ class AssignStatement(Statement):
 
 
 @dataclass
+class IndexAssignStatement(Statement):
+    location: SourceLocation | None = None
+    collection: Expr | None = None
+    index: Expr | None = None
+    value: Expr | None = None
+
+
+@dataclass
 class ExpressionStatement(Statement):
     location: SourceLocation | None = None
     expression: Expr | None = None

@@ -1,0 +1,24 @@
+// Mutable array bindings support indexed assignment: values[i] = x writes one
+// element in place. Writes carry the same runtime bounds guard as reads.
+// Copies share element storage, so a let alias observes later writes.
+
+func main() {
+    mut scores = [10, 20, 30]
+
+    print(scores[1])
+    scores[1] = 99
+    print(scores[1])
+
+    mut index = 0
+    while index < len(scores) {
+        scores[index] = scores[index] + 1
+        index = index + 1
+    }
+    print(scores[0])
+    print(scores[1])
+    print(scores[2])
+
+    let alias = scores
+    scores[0] = 7
+    print(alias[0])
+}

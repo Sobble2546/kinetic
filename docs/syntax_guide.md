@@ -1,6 +1,6 @@
 # The Kinetic Syntax Guide
 
-This guide describes the 1.2.2 prototype. Kinetic explores readable systems-language syntax, but it does not yet provide a production memory-safety model.
+This guide describes the 1.3.0 prototype. Kinetic explores readable systems-language syntax, but it does not yet provide a production memory-safety model.
 
 Kinetic uses concise declarations and compiles through LLVM. The examples below
 show current syntax, not the proposed bootstrap host-service API.
@@ -36,8 +36,9 @@ counter = counter + 1 // Reassignment has no declaration keyword.
 ```
 
 Binding immutability is not a general guarantee that referenced data is deeply
-immutable or memory-safe. Version 1.2.2 supports integer-array reads, but does not implement
-indexed assignment or a production memory-safety model.
+immutable or memory-safe. Version 1.3.0 supports integer-array reads and
+indexed writes through mutable bindings, but does not implement a production
+memory-safety model.
 
 ## 2. Functions (doing things)
 
@@ -49,7 +50,7 @@ func calculate_speed(distance, time) {
 }
 ```
 
-The `main` function is the entry point of your program. In the 1.2.2 prototype it has a fixed no-argument entry shape; declaring parameters on `main` is a compile-time error. When you run your executable, this is where the action starts.
+The `main` function is the entry point of your program. In the 1.3.0 prototype it has a fixed no-argument entry shape; declaring parameters on `main` is a compile-time error. When you run your executable, this is where the action starts.
 
 ```text
 func main() {
@@ -77,7 +78,7 @@ if speed > speed_limit {
 }
 ```
 
-Comparisons in 1.2.2 are limited to equality, less-than, and greater-than. They
+Comparisons in 1.3.0 are limited to equality, less-than, and greater-than. They
 work on integers and, bytewise, on strings.
 
 ## 4. Loops (doing things repeatedly)
@@ -95,7 +96,8 @@ while i < 3 {
 
 ## 5. Arrays (lists of things)
 
-Version 1.2.2 arrays contain integers. Array literals and indexed reads are supported;
+Version 1.3.0 arrays contain integers. Array literals, indexed reads, and
+indexed writes through mutable bindings are supported;
 arrays of strings and mixed element types are not part of the current language.
 
 ```text
@@ -141,13 +143,14 @@ See [array lengths](../examples/08_array_lengths.kn) for a complete example.
 
 ### Runtime bounds checks
 
-Every indexed read checks that its index is nonnegative and strictly less than
+Every indexed read and indexed-assignment write checks that its index is
+nonnegative and strictly less than
 the current array length. String byte reads apply the same rule against the
 string's byte length, and `slice` validates its start and end against the same
 bounds. Negative indexes do not count backward. Indexing an
-empty array always fails. Known constant out-of-bounds reads remain compile-time
-errors; dynamic invalid reads trap at runtime before the element address is
-computed or read. A trap terminates the process with a platform-dependent failure
+empty array always fails. Known constant out-of-bounds indexes remain compile-time
+errors; dynamic invalid accesses trap at runtime before the element address is
+computed, read, or written. A trap terminates the process with a platform-dependent failure
 status, not a recoverable language exception or a formatted diagnostic message.
 The CLI's run command propagates failure; it no longer reports success for a
 failed child process.
@@ -155,6 +158,29 @@ failed child process.
 These checks apply to literal arrays, aliases, mutable bindings, and array
 parameters, including after control-flow merges. They protect the index range,
 not the validity of an already dangling pointer.
+
+### Indexed assignment
+
+Since 1.3.0, a mutable integer-array binding supports writing one element in
+place:
+
+```text
+mut scores = [10, 20, 30]
+scores[1] = 99
+print(scores[1])  // 99
+```
+
+The assignment target must be a variable declared with [`mut`](../compiler/lexer.py:35);
+indexed writes through immutable bindings or function parameters are
+compile-time errors, and strings are not writable. The index and the value
+must both be integers. Writes carry the same compile-time constant-bounds
+errors and runtime guard as reads.
+
+Copies share element storage: copying an array copies the pointer and count,
+not the elements. A write through a mutable binding is therefore visible
+through every alias made from it, including immutable `let` copies; `let` only
+prevents rebinding and indexed writes through that name. See the
+[indexed-writes example](../examples/11_indexed_writes.kn).
 
 ### Array storage and allocation failure
 
@@ -175,7 +201,7 @@ the process rather than returning a recoverable status or a formatted diagnostic
 An empty array may have a null data pointer without an allocation trap; its length
 remains zero and every indexed read is rejected by the bounds check.
 
-There is still no resizing, indexed assignment, or general ownership model.
+There is still no resizing or general ownership model.
 The pointer/count representation introduced in 1.2.0 is unchanged in 1.2.1.
 Regenerate IR and native binaries to pick up the lifetime and allocation fixes.
 

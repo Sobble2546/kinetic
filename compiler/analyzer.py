@@ -7,6 +7,7 @@ from .ast import (
     ExpressionStatement,
     Function,
     IfStatement,
+    IndexAssignStatement,
     IndexExpr,
     LetStatement,
     NameExpr,
@@ -294,6 +295,48 @@ class TypeAnalyzer:
                     self._array_lengths.pop(statement.name, None)
                 last_type = KType.VOID
 
+            elif isinstance(statement, IndexAssignStatement):
+                line, column = self._location_of(statement)
+                collection = statement.collection
+                if not isinstance(collection, NameExpr):
+                    raise CompileError(
+                        "indexed assignment expects a variable", line, column
+                    )
+                if collection.name not in environment:
+                    raise CompileError(
+                        f"undefined variable {collection.name!r}", line, column
+                    )
+                if collection.name not in mutables:
+                    raise CompileError(
+                        f"cannot modify immutable variable {collection.name!r}",
+                        line,
+                        column,
+                    )
+                binding_id = self._binding_ids.get(collection.name)
+                if binding_id is not None:
+                    used.add(binding_id)
+                collection_type = self._expr_type(collection, environment, used)
+                index_type = self._expr_type(statement.index, environment, used)
+                self._unify(index_type, KType.INT, "array index")
+                self._constrain_name(statement.index, KType.INT, environment)
+                value_type = self._expr_type(statement.value, environment, used)
+                self._unify(value_type, KType.INT, "indexed assignment value")
+                self._constrain_name(statement.value, KType.INT, environment)
+                if collection_type is KType.UNKNOWN and self._final_validation:
+                    self._constrain_name(collection, KType.INT_ARRAY, environment)
+                    collection_type = KType.INT_ARRAY
+                if collection_type not in (KType.UNKNOWN, KType.INT_ARRAY):
+                    raise CompileError(
+                        "indexed assignment expects an integer array",
+                        line,
+                        column,
+                    )
+                if collection_type is KType.INT_ARRAY:
+                    self._check_constant_bounds(
+                        collection.name, statement.index, statement
+                    )
+                last_type = KType.VOID
+
             elif isinstance(statement, WhileStatement):
                 cond_type = self._expr_type(statement.condition, environment, used)
                 self._constrain_name(statement.condition, KType.BOOL, environment)
@@ -410,9 +453,10 @@ class TypeAnalyzer:
             if (
                 collection_type is KType.INT_ARRAY
                 and isinstance(expression.collection, NameExpr)
-                and isinstance(expression.index, NumberExpr)
             ):
-                self._check_constant_bounds(expression, environment)
+                self._check_constant_bounds(
+                    expression.collection.name, expression.index, expression
+                )
             return KType.INT
         if isinstance(expression, BinaryExpr):
             return self._binary_type(expression, environment, used)
@@ -428,17 +472,16 @@ class TypeAnalyzer:
         return None
 
     def _check_constant_bounds(
-        self, expression: IndexExpr, environment: dict[str, KType]
+        self, name: str, index: Expr, location_source: Expr | Statement
     ) -> None:
-        index = expression.index
         if not isinstance(index, NumberExpr) or index.value < 0:
             return
-        lengths = self._array_lengths.get(expression.collection.name, None)
+        lengths = self._array_lengths.get(name, None)
         if lengths is not None and index.value >= lengths:
-            line, column = self._location_of(expression)
+            line, column = self._location_of(location_source)
             raise CompileError(
                 f"index {index.value} is out of bounds for array "
-                f"{expression.collection.name!r} of length {lengths}",
+                f"{name!r} of length {lengths}",
                 line,
                 column,
             )

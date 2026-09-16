@@ -250,6 +250,55 @@ class BackendTests(unittest.TestCase):
         self.assertIn('define i8* @"head"(i8*', llvm_ir)
         self.assertIn('call i8* @"head"', llvm_ir)
 
+    def test_indexed_write_guards_then_stores(self):
+        from compiler.compiler import compile_source
+        from llvmlite import binding
+
+        llvm_ir = compile_source(
+            "func make() { [10, 20] }\n"
+            "func main() { mut values = make() let index = 1 values[index] = 99 }"
+        )
+        self.assertIn("bounds.fail", llvm_ir)
+        self.assertIn('call void @"llvm.trap"()', llvm_ir)
+
+        def element_stores(instructions):
+            return [
+                inst
+                for inst in instructions
+                if inst.opcode == "store"
+                and str(list(inst.operands)[0].type) == "i64"
+            ]
+
+        with binding.parse_assembly(llvm_ir) as module:
+            function = module.get_function("main")
+            blocks = {block.name: list(block.instructions) for block in function.blocks}
+            self.assertEqual(blocks["entry"][-1].opcode, "br")
+            self.assertEqual(blocks["bounds.fail"][-1].opcode, "unreachable")
+            self.assertTrue(any("llvm.trap" in str(inst) for inst in blocks["bounds.fail"]))
+            self.assertFalse(any(inst.opcode == "getelementptr" for inst in blocks["entry"]))
+            self.assertFalse(any(inst.opcode == "getelementptr" for inst in blocks["bounds.fail"]))
+            self.assertEqual(element_stores(blocks["entry"]), [])
+            self.assertEqual(element_stores(blocks["bounds.fail"]), [])
+            self.assertEqual(blocks["bounds.ok"][0].opcode, "getelementptr")
+            self.assertEqual(blocks["bounds.ok"][1].opcode, "store")
+            self.assertEqual(
+                str(list(blocks["bounds.ok"][1].operands)[0].type), "i64"
+            )
+
+    def test_indexed_write_reloads_reassigned_mutable_binding(self):
+        from compiler.compiler import compile_source
+
+        llvm_ir = compile_source(
+            "func main() {\n"
+            "  mut values = [1, 2]\n"
+            "  values = [3, 4, 5]\n"
+            "  values[2] = 9\n"
+            "  print(values[2])\n"
+            "}"
+        )
+        self.assertIn("load {i64*, i64}", llvm_ir)
+        self.assertIn("store i64 9", llvm_ir)
+
 
 if __name__ == "__main__":
     unittest.main()

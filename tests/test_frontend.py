@@ -96,6 +96,21 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(expression.operator, "+")
         self.assertEqual(expression.right.operator, "*")
 
+    def test_indexed_assignment_parses_collection_index_and_value(self):
+        from compiler.ast import IndexAssignStatement
+
+        program = parse("func main() {\n  mut values = [1, 2]\n  values[1] = 9\n}")
+        statement = program.functions[0].body[1]
+        self.assertIsInstance(statement, IndexAssignStatement)
+        self.assertEqual(statement.collection.name, "values")
+        self.assertEqual(statement.index.value, 1)
+        self.assertEqual(statement.value.value, 9)
+
+    def test_non_indexed_expression_assignment_still_errors(self):
+        with self.assertRaises(ParseError) as raised:
+            parse("func main() {\n  let a = 1\n  let b = 2\n  a + b = 5\n}")
+        self.assertIn("expected an expression", str(raised.exception))
+
 
 class AnalyzerTests(unittest.TestCase):
     def test_missing_main_is_an_error(self):
@@ -429,6 +444,128 @@ class ArrayLengthTests(unittest.TestCase):
         self.assertEqual(types["make"].result.name, "INT_ARRAY")
 
 
+class IndexedWriteTests(unittest.TestCase):
+    def test_indexed_write_on_mutable_array_is_accepted(self):
+        types, diagnostics = analyze(
+            "func main() { mut values = [1, 2] values[0] = 9 print(values[0]) }"
+        )
+        self.assertIn("main", types)
+        self.assertEqual(diagnostics.warnings, [])
+
+    def test_indexed_write_requires_a_variable_target(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze(
+                "func make() { [1, 2] }\n"
+                "func main() { make()[0] = 9 }"
+            )
+        self.assertIn("indexed assignment expects a variable", str(raised.exception))
+
+    def test_indexed_write_rejects_immutable_binding(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze("func main() { let values = [1, 2] values[0] = 9 }")
+        self.assertIn(
+            "cannot modify immutable variable 'values'", str(raised.exception)
+        )
+
+    def test_indexed_write_rejects_parameters(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze(
+                "func set_at(values, index) { values[index] = 9 }\n"
+                "func main() { set_at([1], 0) }"
+            )
+        self.assertIn(
+            "cannot modify immutable variable 'values'", str(raised.exception)
+        )
+
+    def test_indexed_write_rejects_undefined_variable(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze("func main() { values[0] = 9 }")
+        self.assertIn("undefined variable 'values'", str(raised.exception))
+
+    def test_indexed_write_rejects_strings_and_integers(self):
+        for declaration in ('mut values = "ab"', "mut values = 5"):
+            with self.subTest(declaration=declaration):
+                with self.assertRaises(CompileError) as raised:
+                    analyze(
+                        "func main() { " + declaration + " values[0] = 9 }"
+                    )
+                self.assertIn(
+                    "indexed assignment expects an integer array",
+                    str(raised.exception),
+                )
+
+    def test_indexed_write_checks_index_and_value_types(self):
+        cases = {
+            "values[text] = 9": "type mismatch in array index",
+            'values[0] = "x"': "type mismatch in indexed assignment value",
+        }
+        for statement, expected in cases.items():
+            with self.subTest(statement=statement):
+                with self.assertRaises(CompileError) as raised:
+                    analyze(
+                        'func main() { mut values = [1, 2] let text = "ab" '
+                        + statement
+                        + " }"
+                    )
+                self.assertIn(expected, str(raised.exception))
+
+    def test_constant_out_of_bounds_write_is_an_error(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze("func main() {\n  mut values = [1, 2]\n  values[2] = 9\n}")
+        self.assertIn("index 2 is out of bounds", str(raised.exception))
+        self.assertIn("length 2", str(raised.exception))
+        self.assertEqual(raised.exception.line, 3)
+
+    def test_dynamic_indexed_writes_are_left_to_runtime_checks(self):
+        for index in ("0 - 1", "len(values)"):
+            with self.subTest(index=index):
+                types, _ = analyze(
+                    "func main() { mut values = [1] let index = "
+                    + index
+                    + " values[index] = 9 print(values[0]) }"
+                )
+                self.assertIn("main", types)
+
+    def test_indexed_write_marks_binding_as_used(self):
+        _, diagnostics = analyze(
+            "func main() {\n  mut values = [1, 2]\n  values[0] = 9\n}"
+        )
+        self.assertEqual(diagnostics.warnings, [])
+
+    def test_indexed_write_preserves_known_length(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze(
+                "func main() {\n"
+                "  mut values = [1, 2]\n"
+                "  values[0] = 9\n"
+                "  print(values[2])\n"
+                "}"
+            )
+        self.assertIn("out of bounds", str(raised.exception))
+        self.assertIn("length 2", str(raised.exception))
+
+    def test_indexed_write_in_branch_keeps_length_facts(self):
+        with self.assertRaises(CompileError) as raised:
+            analyze(
+                "func main() {\n"
+                "  mut values = [1, 2]\n"
+                "  if 1 < 2 {\n"
+                "    values[0] = 9\n"
+                "  }\n"
+                "  print(values[2])\n"
+                "}"
+            )
+        self.assertIn("out of bounds", str(raised.exception))
+        self.assertIn("length 2", str(raised.exception))
+
+    def test_indexed_write_infers_array_parameter(self):
+        types, _ = analyze(
+            "func reset(values) { mut local = values local[0] = 0 local }\n"
+            "func main() { print(reset([1, 2])[1]) }"
+        )
+        self.assertEqual(types["reset"].parameters[0].name, "INT_ARRAY")
+
+
 class StringOperationTests(unittest.TestCase):
     def test_length_accepts_string_literals_and_bindings(self):
         types, diagnostics = analyze(
@@ -647,7 +784,7 @@ class DiagnosticExampleTests(unittest.TestCase):
             "04_bounds_checked.kn", "05_mutability.kn",
             "06_status_handling.kn", "07_byte_processing.kn",
             "08_array_lengths.kn", "09_array_lifetimes.kn",
-            "10_text.kn",
+            "10_text.kn", "11_indexed_writes.kn",
         ):
             with self.subTest(example=name):
                 text = Path("examples", name).read_text(encoding="utf-8")

@@ -1,6 +1,6 @@
 # Kinetic examples
 
-These are complete programs for learning and experimenting with the 1.2.2 language.
+These are complete programs for learning and experimenting with the 1.3.0 language.
 
 | Program | Focus |
 | --- | --- |
@@ -14,6 +14,7 @@ These are complete programs for learning and experimenting with the 1.2.2 langua
 | [Array lengths](08_array_lengths.kn) | Lengths of empty arrays, copies, reassigned bindings, and function arguments/results. |
 | [Array lifetimes](09_array_lifetimes.kn) | Read a locally created array after its helper returns and another helper allocates an array. |
 | [Text operations](10_text.kn) | String length, byte reads, comparisons, slicing, and concatenation. |
+| [Indexed writes](11_indexed_writes.kn) | In-place element writes through mutable bindings, visible through aliases. |
 
 Read the [syntax guide](../docs/syntax_guide.md) for the language rules.
 
@@ -67,6 +68,17 @@ equal
 ordered
 ```
 
+Expected output for the [indexed-writes example](11_indexed_writes.kn):
+
+```text
+20
+99
+11
+100
+31
+7
+```
+
 These are program output expectations, excluding the launcher's build/run
 messages. The hosted native CI job builds and runs every numbered example with
 Clang on each push and checks for the expected output fragments; locally the native suite remains
@@ -107,6 +119,8 @@ The compiler emits structured diagnostics at compile time:
 
 Array copies share element storage, but rebinding a mutable array updates that
 binding's pointer and length together without changing an earlier copy's length.
+Writing an element through a mutable binding updates the shared storage itself,
+so every alias observes the new value.
 Element storage is heap-allocated at construction and lives until the process
 exits, so returning a locally created array is well-defined; the prototype never
 reclaims this storage and leaks it by design. Bounds checks protect the index

@@ -28,6 +28,8 @@ kinetic_app
 /examples/07_byte_processing
 /examples/08_array_lengths
 /examples/09_array_lifetimes
+/examples/10_text
+/examples/11_indexed_writes
 /examples/warnings/unused_variable
 /examples/warnings/shadowing
 /examples/runtime_errors/out_of_bounds

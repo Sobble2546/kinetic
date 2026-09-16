@@ -1,6 +1,6 @@
 # Agent guidance
 
-Kinetic is a 1.2.2 prototype language compiler written in Python. It emits textual
+Kinetic is a 1.3.0 prototype language compiler written in Python. It emits textual
 LLVM IR through llvmlite and invokes Clang for native binaries. Keep changes small
 and do not imply that the prototype provides a production memory-safety model.
 
@@ -74,6 +74,7 @@ python kinetic.py run examples/07_byte_processing.kn
 python kinetic.py run examples/08_array_lengths.kn
 python kinetic.py run examples/09_array_lifetimes.kn
 python kinetic.py run examples/10_text.kn
+python kinetic.py run examples/11_indexed_writes.kn
 ```
 
 **If the user asks not to compile or run programs, do not invoke these commands,
@@ -108,8 +109,10 @@ byte sequences: indexing reads one byte, `==`/`<`/`>` compare bytewise, and
 `+` concatenates; these lower to C's `strlen`, `strcmp`, `memcpy`, and `malloc`.
 Arrays lower to
 pointer/count aggregates, including in function signatures and mutable storage.
-Every indexed read has a runtime range guard before element address calculation
-and loading; failure traps. Preserve both fields through copying/reassignment
+Every indexed read and indexed-assignment write has a runtime range guard before
+element address calculation and loading or storing; failure traps. Indexed
+writes require a `mut` target, and copies share element storage, so aliases
+observe writes. Preserve both fields through copying/reassignment
 and do not equate bounds checking with lifetime safety. Array element storage
 is heap-allocated at construction and lives until process exit; it is never
 freed or reused, so returning locally created arrays is well-defined but repeated
@@ -120,9 +123,9 @@ the bounds check. The CLI propagates failed child exit statuses. Test
 [runtime failures](examples/runtime_errors/README.md)
 separately from success examples when native execution is permitted.
 
-The [syntax guide](docs/syntax_guide.md) documents the 1.2.2 language. The ten
-numbered [examples](examples/README.md) cover inference, control flow, mutation,
-array lengths/lifetimes, and text operations. Comparisons remain limited to
+The [syntax guide](docs/syntax_guide.md) documents the 1.3.0 language. The
+eleven numbered [examples](examples/README.md) cover inference, control flow,
+mutation, array lengths/lifetimes, indexed writes, and text operations. Comparisons remain limited to
 equality, less-than, and greater-than.
 
 Declarations use [`func`](compiler/lexer.py:33) for functions,

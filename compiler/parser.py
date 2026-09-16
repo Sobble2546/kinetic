@@ -7,6 +7,7 @@ from .ast import (
     ExpressionStatement,
     Function,
     IfStatement,
+    IndexAssignStatement,
     IndexExpr,
     LetStatement,
     NameExpr,
@@ -142,6 +143,14 @@ class Parser:
                 )
 
         expression = self._parse_expression()
+        if isinstance(expression, IndexExpr) and self.current.kind is TokenKind.EQUAL:
+            self._advance()
+            return IndexAssignStatement(
+                expression.location,
+                expression.collection,
+                expression.index,
+                self._parse_expression(),
+            )
         return ExpressionStatement(expression.location, expression)
 
     def _parse_expression(self) -> Expr:

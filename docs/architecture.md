@@ -1,6 +1,6 @@
 # Compiler architecture
 
-Kinetic's 1.2.2 implementation lives in the [compiler source directory](../compiler/README.md).
+Kinetic's 1.3.0 implementation lives in the [compiler source directory](../compiler/README.md).
 It is a flat Python package with separate modules for each compilation stage.
 
 ## Entry points
@@ -35,7 +35,8 @@ are collected during analysis and displayed with a singular/plural summary.
 Errors stop the pipeline at the first failure; this is not multi-error recovery.
 
 The analyzer emits warnings for unused bindings and shadowing, and reports
-errors for immutable reassignment, undefined names, type mismatches, constant
+errors for immutable reassignment, indexed writes through immutable bindings,
+undefined names, type mismatches, constant
 out-of-bounds array indexes, an invalid `main` entry point, and duplicate
 function parameters. Lexical binding identity is preserved while analyzing
 shadowing so usage diagnostics and scoped array facts refer to the declaration
@@ -60,7 +61,7 @@ the count from the aggregate after evaluating the argument once; for strings it
 calls C's `strlen`. The `slice` builtin is reserved alongside it: analysis
 requires a string with integer start and end indexes and returns a string.
 
-## Array representation and read checks
+## Array representation and access checks
 
 The backend lowers integer arrays to an LLVM aggregate containing a data pointer
 and a 64-bit element count. Literals construct both fields, mutable bindings
@@ -68,12 +69,18 @@ store/load the aggregate, and function signatures and value-producing branches
 carry the same aggregate. Reassignment therefore updates pointer and length
 together, and aliases keep their original metadata.
 
-Before each element read, the backend compares the signed index against zero
-and the array length. It branches to an element-address/load block only when
+Since 1.3.0, indexed assignment writes one element through a mutable binding:
+the analyzer requires a `mut` target holding an integer array with integer
+index and value, and the backend stores through the same guarded element
+address used by reads. Copies share element storage, so aliases observe writes.
+
+Before each element read or indexed-assignment write, the backend compares the
+signed index against zero
+and the array length. It branches to an element-address/load/store block only when
 both tests pass. The failure block calls the LLVM trap intrinsic and terminates
 with an unreachable instruction. No invalid element pointer is computed on that
 path. LLVM may later simplify redundant constant checks; the compiler emits them
-for every source-level read.
+for every source-level read and write.
 
 Array literals allocate element storage with the C allocator; the returned
 pointer is stored in the aggregate alongside the element count. Allocation
@@ -92,7 +99,8 @@ that pointer.
 Runtime range checks protect only the index range; neither they nor the
 allocation-failure guard reclaim storage, prevent unbounded growth, or
 constitute a production memory-safety model. The pointer/count representation
-was introduced as an internal ABI change in 1.2.0 and is unchanged in 1.2.1;
+was introduced as an internal ABI change in 1.2.0 and is unchanged in 1.2.1
+and 1.3.0;
 it is not the proposed host adapter's opaque-buffer ABI.
 
 The CLI preserves nonnegative child exit statuses and maps signal termination
@@ -124,7 +132,7 @@ the repository root; the installed command uses the same code.
 
 The [roadmap](../ROADMAP.md) tracks the language, runtime, and validation work
 needed before Kinetic can host its own compiler. Those planned components are
-not part of the 1.2.2 implementation described here.
+not part of the 1.3.0 implementation described here.
 
 The [bootstrap host interface](bootstrap_interface.md) specifies the future
 native-service boundary, buffer ownership, and textual-IR build protocol. It is

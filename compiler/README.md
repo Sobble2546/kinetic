@@ -1,7 +1,7 @@
 # Compiler sources
 
 This directory is Kinetic's Python package. All compiler stages and the CLI live
-directly here, with one source file per concern. It implements Kinetic 1.2.2.
+directly here, with one source file per concern. It implements Kinetic 1.3.0.
 
 | Stage or concern | Source |
 | --- | --- |

@@ -1,6 +1,6 @@
 # Tests
 
-Kinetic 1.2.2 has separate suites for repository structure, frontend behavior,
+Kinetic 1.3.0 has separate suites for repository structure, frontend behavior,
 LLVM generation, and native execution. The native suite runs in hosted CI on
 every push and stays opt-in locally. Run commands below from the repository root.
 
@@ -33,13 +33,15 @@ The [frontend suite](test_frontend.py) imports the lexer, parser, and analyzer
 without needing llvmlite or Clang. It covers locations, migration diagnostics,
 declarations, precedence, entry-point checks, parameter errors, mutability,
 scope-aware warnings, array-length tracking, and deferred function inference.
-It also analyzes all ten numbered examples and checks intentional failures
+It also analyzes all eleven numbered examples and checks intentional failures
 and warning examples. This executes compiler frontend code, but does not emit
 IR or run generated programs.
 
 Length-builtin tests cover valid/empty arrays, invalid types and arity, reserved
 function names, inference from array parameters and forward results, and dynamic
-indexes left for runtime checks. A mocked CLI test checks successful exits,
+indexes left for runtime checks. Indexed-write tests cover the mutable-binding
+rule, type and constant-bounds errors, preserved length facts, and inference
+through writes. A mocked CLI test checks successful exits,
 nonzero child exits, and signal-termination mapping without building or spawning
 a native program.
 
@@ -59,8 +61,8 @@ This is compilation to IR, even though it does not build or run native binaries.
 Array tests inspect metadata construction/extraction, aggregate stores/loads,
 forwarding, empty arrays, shadowing, control-flow integration, and heap
 allocation of element storage. Structural LLVM assertions check that the bounds
-failure block traps and that element pointer arithmetic and loads appear only
-after the bounds branch. These backend tests require IR generation; they are
+failure block traps and that element pointer arithmetic, loads, and stores
+appear only after the bounds branch. These backend tests require IR generation; they are
 not part of static-only verification.
 
 The backend also traps on failed nonempty-array allocations, but the current
@@ -83,14 +85,15 @@ The [native suite](test_native.py) requires Clang and llvmlite. It runs in
 hosted CI on every push; locally it is skipped unless native tests are enabled
 and Clang is available, and opting in without llvmlite is not supported. Each
 test builds in a temporary directory and checks an expected output fragment.
-Coverage includes all ten numbered examples, including the status-handling,
-byte-processing, and returned-array lifetime demonstrations.
+Coverage includes all eleven numbered examples, including the status-handling,
+byte-processing, returned-array lifetime, and indexed-write demonstrations.
 
-Additional native tests check lengths and successful reads across function calls,
+Additional native tests check lengths, indexed writes through shared storage,
+and successful reads across function calls,
 copies, and reassignment, including locally created arrays returned from helpers
 and read after later calls; they also check nonzero exits for negative,
 upper-bound, empty-array, shortened-array, and out-of-bounds returned-array
-accesses. Runtime-failure examples are compiled and executed separately. Trap
+reads and writes. Runtime-failure examples are compiled and executed separately. Trap
 status is checked as nonzero rather than assuming a specific platform's signal
 number.
 

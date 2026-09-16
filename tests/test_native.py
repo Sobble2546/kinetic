@@ -23,6 +23,7 @@ EXPECTED = {
         "Scratch array:\n40\nReturned array:\n7\n8\n9\nReturned length:\n3\n"
     ),
     "10_text.kn": "Text operations:\n7\n75\nKin\nHello, Kinetic!\nequal\nordered\n",
+    "11_indexed_writes.kn": "20\n99\n11\n100\n31\n7\n",
 }
 
 
@@ -177,6 +178,45 @@ class NativeExampleTests(unittest.TestCase):
         for name in ("out_of_bounds.kn", "negative_index.kn"):
             with self.subTest(example=name):
                 result = self._run_source((root / name).read_text(encoding="utf-8"))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("Unreachable", result.stdout)
+
+    def test_indexed_writes_update_shared_storage(self):
+        result = self._run_source(
+            "func main() {\n"
+            "  mut values = [1, 2, 3]\n"
+            "  mut index = 0\n"
+            "  while index < len(values) {\n"
+            "    values[index] = values[index] * 10\n"
+            "    index = index + 1\n"
+            "  }\n"
+            "  let alias = values\n"
+            "  values[0] = 42\n"
+            "  print(alias[0])\n"
+            "  print(alias[1])\n"
+            "  print(alias[2])\n"
+            "  values = [7, 8]\n"
+            "  values[1] = 80\n"
+            "  print(values[1])\n"
+            "  print(len(values))\n"
+            "  print(alias[0])\n"
+            "}"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "42\n20\n30\n80\n2\n42\n")
+
+    def test_indexed_write_bounds_failures_trap(self):
+        cases = {
+            "negative": "mut values = [10] let index = 0 - 1",
+            "upper": "mut values = [10] let index = len(values)",
+            "empty": "mut values = [] let index = 0",
+            "shrunk": "mut values = [10, 20] values = [30] let index = 1",
+        }
+        for name, setup in cases.items():
+            with self.subTest(case=name):
+                result = self._run_source(
+                    "func main() { " + setup + " values[index] = 99 print(\"Unreachable\") }"
+                )
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn("Unreachable", result.stdout)
 

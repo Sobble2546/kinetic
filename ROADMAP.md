@@ -69,7 +69,7 @@ Frontend, LLVM-structure, native-output, runtime-failure, and CLI-exit regressio
 tests are defined, and the hosted native CI job executes the native suites on
 every push. These changes implement size queries, guarded reads, and
 heap-allocated process-lived element storage; they do not provide resizable
-storage, indexed mutation, host services, storage reclamation, or a general
+storage, host services, storage reclamation, or a general
 lifetime-safety model.
 
 ### Remaining preparation
@@ -121,12 +121,16 @@ observed local or hosted results, not from configuration or written tests alone.
   construction of output strings.
 - [ ] Data structures suitable for compiler records and variants, growable
   buffers, and symbol lookup; choose the minimum useful design before adding features.
-- [ ] Mutable indexed storage.
+- [x] Mutable indexed storage: indexed assignment on mutable integer-array
+  bindings (1.3.0), with compile-time constant-bounds errors and the same
+  runtime guard as reads. Copies share element storage, so aliases observe
+  writes.
 - [ ] Validate and close explicit collection-size handling and runtime read
   guards: the length builtin, array metadata, and read checks are implemented
   since 1.2.0 and covered by the suites selected in hosted CI. Version 1.2.1
   defines process-lived, unreclaimed heap storage and traps on failed nonempty
-  allocations; mutation rules and allocation-failure regression coverage remain.
+  allocations, and 1.3.0 defines mutation rules for indexed writes;
+  allocation-failure regression coverage remains.
 - [ ] Defined allocation and lifetime rules for compiler-owned data, with checks
   appropriate to the chosen design.
 - [ ] File input/output, command-line arguments, diagnostics, and error/status reporting.
