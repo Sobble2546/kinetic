@@ -5,7 +5,7 @@
 Kinetic's next major destination is **self-hosting**: a compiler written in
 Kinetic that can compile its own source and build a working successor compiler.
 
-The current compiler is a Python 1.2.2 prototype. It is not self-hosting, and no
+The current compiler is a Python 1.3.0 prototype. It is not self-hosting, and no
 compiler stage has been ported to Kinetic yet. The language and runtime need
 additional capabilities before that port is practical.
 
@@ -63,13 +63,14 @@ The [byte-processing](examples/07_byte_processing.kn) and
 
 Version 1.2.1 fixes returned-array lifetimes with heap-allocated element storage
 that lives until process exit. Failed allocations for nonempty arrays trap
-before initialization; empty arrays remain valid length-zero values.
+before initialization; empty arrays remain valid length-zero values. Version
+1.3.0 adds guarded indexed writes on mutable integer-array bindings.
 
-Frontend, LLVM-structure, native-output, runtime-failure, and CLI-exit regression
-tests are defined, and the hosted native CI job executes the native suites on
-every push. These changes implement size queries, guarded reads, and
-heap-allocated process-lived element storage; they do not provide resizable
-storage, host services, storage reclamation, or a general
+Frontend, LLVM-structure, native-output, runtime-failure, allocation-failure,
+and CLI-exit regression tests are defined, and the hosted native CI job executes
+the native suites on every push. These changes implement size queries, guarded
+reads and writes, and heap-allocated process-lived element storage; they do not
+provide resizable storage, host services, storage reclamation, or a general
 lifetime-safety model.
 
 ### Remaining preparation
@@ -110,10 +111,10 @@ sequence; their implementations remain future work.
   the runtime-failure programs on each push.
 
 **Verification coverage:** the shared frontend, backend, and native suites cover
-returned local arrays, dynamic bounds, and function results and are enabled in
-hosted CI. The allocation-failure trap is implemented, but the current suites
-do not force allocator failure. Passing verification must be established from
-observed local or hosted results, not from configuration or written tests alone.
+returned local arrays, dynamic bounds, function results, and forced
+allocation-failure traps and are enabled in hosted CI. Passing verification must
+be established from observed local or hosted results, not from configuration or
+written tests alone.
 
 ### 2. Add the language and runtime building blocks
 
@@ -125,12 +126,13 @@ observed local or hosted results, not from configuration or written tests alone.
   bindings (1.3.0), with compile-time constant-bounds errors and the same
   runtime guard as reads. Copies share element storage, so aliases observe
   writes.
-- [ ] Validate and close explicit collection-size handling and runtime read
+- [x] Validate and close explicit collection-size handling and runtime read
   guards: the length builtin, array metadata, and read checks are implemented
   since 1.2.0 and covered by the suites selected in hosted CI. Version 1.2.1
   defines process-lived, unreclaimed heap storage and traps on failed nonempty
-  allocations, and 1.3.0 defines mutation rules for indexed writes;
-  allocation-failure regression coverage remains.
+  allocations, 1.3.0 defines mutation rules for indexed writes, and the backend
+  and native suites cover forced allocation-failure traps and null-backed empty
+  arrays.
 - [ ] Defined allocation and lifetime rules for compiler-owned data, with checks
   appropriate to the chosen design.
 - [ ] File input/output, command-line arguments, diagnostics, and error/status reporting.

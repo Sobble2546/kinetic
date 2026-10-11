@@ -62,12 +62,11 @@ Array tests inspect metadata construction/extraction, aggregate stores/loads,
 forwarding, empty arrays, shadowing, control-flow integration, and heap
 allocation of element storage. Structural LLVM assertions check that the bounds
 failure block traps and that element pointer arithmetic, loads, and stores
-appear only after the bounds branch. These backend tests require IR generation; they are
+appear only after the bounds branch. Additional structural assertions verify
+that nonempty-array allocations check for a null pointer and branch to a trap
+block before evaluating elements or storing into element storage, while empty
+arrays omit the failure trap. These backend tests require IR generation; they are
 not part of static-only verification.
-
-The backend also traps on failed nonempty-array allocations, but the current
-suites do not force allocation failure or directly assert that failure path.
-Do not describe the heap-storage tests as allocation-failure coverage.
 
 ## General runner
 
@@ -93,7 +92,9 @@ and successful reads across function calls,
 copies, and reassignment, including locally created arrays returned from helpers
 and read after later calls; they also check nonzero exits for negative,
 upper-bound, empty-array, shortened-array, and out-of-bounds returned-array
-reads and writes. Runtime-failure examples are compiled and executed separately. Trap
+reads and writes, as well as forced allocator failures for nonempty arrays and
+runtime-allocated strings while verifying that null-backed empty arrays remain
+valid length-zero values. Runtime-failure examples are compiled and executed separately. Trap
 status is checked as nonzero rather than assuming a specific platform's signal
 number.
 
