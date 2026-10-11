@@ -159,6 +159,56 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(llvm_ir.count('call i64* @"malloc"'), 1)
         self.assertIn('call {i64*, i64} @"make"', llvm_ir)
 
+    def test_nonempty_array_allocation_guard_precedes_element_evaluation_and_stores(self):
+        from compiler.compiler import compile_source
+        from llvmlite import binding
+
+        llvm_ir = compile_source(
+            "func step() { print(1) 10 }\n"
+            "func make() { [step(), 20] }\n"
+            "func main() { let values = make() print(values[0]) }"
+        )
+        self.assertIn('call i64* @"malloc"(i64 16)', llvm_ir)
+        with binding.parse_assembly(llvm_ir) as module:
+            function = module.get_function("make")
+            blocks = {block.name: list(block.instructions) for block in function.blocks}
+            self.assertEqual(blocks["entry"][-1].opcode, "br")
+            self.assertTrue(any("malloc" in str(inst) for inst in blocks["entry"]))
+            self.assertTrue(
+                any(inst.opcode == "icmp" and "null" in str(inst) for inst in blocks["entry"])
+            )
+            self.assertFalse(any("step" in str(inst) for inst in blocks["entry"]))
+            self.assertFalse(
+                any(inst.opcode in ("getelementptr", "store", "insertvalue") for inst in blocks["entry"])
+            )
+            self.assertEqual(blocks["alloc.fail"][-1].opcode, "unreachable")
+            self.assertTrue(any("llvm.trap" in str(inst) for inst in blocks["alloc.fail"]))
+            self.assertFalse(any("step" in str(inst) for inst in blocks["alloc.fail"]))
+            self.assertFalse(
+                any(inst.opcode in ("getelementptr", "store", "insertvalue") for inst in blocks["alloc.fail"])
+            )
+            self.assertTrue(any("step" in str(inst) for inst in blocks["alloc.ok"]))
+            self.assertTrue(any(inst.opcode == "getelementptr" for inst in blocks["alloc.ok"]))
+            self.assertTrue(any(inst.opcode == "store" for inst in blocks["alloc.ok"]))
+            self.assertTrue(any(inst.opcode == "insertvalue" for inst in blocks["alloc.ok"]))
+
+    def test_empty_array_allocation_omits_failure_trap(self):
+        from compiler.compiler import compile_source
+        from llvmlite import binding
+
+        llvm_ir = compile_source(
+            "func make_empty() { [] }\n"
+            "func main() { let values = make_empty() print(len(values)) }"
+        )
+        self.assertIn('call i64* @"malloc"(i64 0)', llvm_ir)
+        with binding.parse_assembly(llvm_ir) as module:
+            function = module.get_function("make_empty")
+            blocks = {block.name: list(block.instructions) for block in function.blocks}
+            self.assertEqual(set(blocks), {"entry"})
+            self.assertTrue(any("malloc" in str(inst) for inst in blocks["entry"]))
+            self.assertFalse(any("llvm.trap" in str(inst) for inst in blocks["entry"]))
+            self.assertTrue(any(inst.opcode == "insertvalue" for inst in blocks["entry"]))
+
     def test_immutable_array_shadow_does_not_load_as_mutable_storage(self):
         from compiler.compiler import compile_source
 

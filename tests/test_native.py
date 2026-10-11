@@ -72,6 +72,35 @@ class NativeExampleTests(unittest.TestCase):
                 [str(binary)], cwd=directory, capture_output=True, text=True, timeout=10
             )
 
+    def _run_source_with_failing_malloc(self, source):
+        from compiler.compiler import compile_source
+
+        llvm_ir = compile_source(source)
+        declaration = 'declare i64* @"malloc"(i64 %".1")'
+        self.assertIn(declaration, llvm_ir)
+        failing_ir = llvm_ir.replace(
+            declaration,
+            'declare i32 @"fflush"(i8* %".1")\n'
+            'define internal i64* @"malloc"(i64 %".1") noinline {\n'
+            "entry:\n"
+            '  %".2" = call i32 @"fflush"(i8* null)\n'
+            "  ret i64* null\n"
+            "}",
+            1,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            ir_path = work / "program.ll"
+            ir_path.write_text(failing_ir, encoding="utf-8")
+            binary = work / ("program.exe" if sys.platform == "win32" else "program")
+            subprocess.run(
+                [CLANG, str(ir_path), "-o", str(binary)],
+                capture_output=True, text=True, check=True, timeout=30,
+            )
+            return subprocess.run(
+                [str(binary)], cwd=directory, capture_output=True, text=True, timeout=10
+            )
+
     def test_lengths_and_reads_survive_copies_calls_and_branches(self):
         result = self._run_source(
             "func count(values) { len(values) }\n"
@@ -172,6 +201,85 @@ class NativeExampleTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("Unreachable", result.stdout)
+
+    def test_empty_array_remains_valid_when_allocator_returns_null(self):
+        result = self._run_source_with_failing_malloc(
+            "func make_empty() { [] }\n"
+            "func forward(values) { values }\n"
+            "func main() {\n"
+            "  let first = make_empty()\n"
+            "  mut current = forward(first)\n"
+            "  print(len(first))\n"
+            "  print(len(current))\n"
+            "  current = []\n"
+            "  print(len(current))\n"
+            "}"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "0\n0\n0\n")
+
+        read_result = self._run_source_with_failing_malloc(
+            "func main() {\n"
+            "  let empty = []\n"
+            "  print(len(empty))\n"
+            "  let index = 0\n"
+            "  print(empty[index])\n"
+            '  print("Unreachable")\n'
+            "}"
+        )
+        self.assertNotEqual(read_result.returncode, 0)
+        self.assertNotIn("Unreachable", read_result.stdout)
+
+    def test_nonempty_array_allocation_failures_trap_before_initialization(self):
+        result = self._run_source_with_failing_malloc(
+            "func side_effect() {\n"
+            '  print("Evaluated element")\n'
+            "  let flush = []\n"
+            "  len(flush) + 10\n"
+            "}\n"
+            "func main() {\n"
+            "  let empty = []\n"
+            "  print(len(empty))\n"
+            "  let values = [side_effect(), 20]\n"
+            "  print(values[0])\n"
+            '  print("Unreachable")\n'
+            "}"
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "0\n")
+        self.assertNotIn("Evaluated element", result.stdout)
+        self.assertNotIn("Unreachable", result.stdout)
+
+        cases = {
+            "helper_return": (
+                "func make() { [7, 8] }\n"
+                'func main() { let values = make() print(values[0]) print("Unreachable") }'
+            ),
+            "reassignment": (
+                "func main() {\n"
+                "  mut values = []\n"
+                "  print(len(values))\n"
+                "  values = [1]\n"
+                '  print("Unreachable")\n'
+                "}"
+            ),
+        }
+        for name, source in cases.items():
+            with self.subTest(case=name):
+                case_result = self._run_source_with_failing_malloc(source)
+                self.assertNotEqual(case_result.returncode, 0)
+                self.assertNotIn("Unreachable", case_result.stdout)
+
+    def test_string_allocation_failures_trap_without_reaching_following_code(self):
+        cases = {
+            "concat": 'func main() { print("he" + "llo") print("Unreachable") }',
+            "slice": 'func main() { print(slice("hello", 0, 2)) print("Unreachable") }',
+        }
+        for name, source in cases.items():
+            with self.subTest(case=name):
+                result = self._run_source_with_failing_malloc(source)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn("Unreachable", result.stdout)
 
     def test_runtime_failure_examples_exit_unsuccessfully(self):
         root = Path(__file__).resolve().parents[1] / "examples" / "runtime_errors"
