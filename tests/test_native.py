@@ -73,6 +73,11 @@ class NativeExampleTests(unittest.TestCase):
             )
 
     def _run_source_with_failing_malloc(self, source):
+        """Build and run source with malloc replaced by a null-returning stub.
+
+        The stub flushes output before returning so pre-trap output is captured.
+        Return the completed process with captured stdout, stderr, and exit code.
+        """
         from compiler.compiler import compile_source
 
         llvm_ir = compile_source(source)
@@ -203,6 +208,7 @@ class NativeExampleTests(unittest.TestCase):
         self.assertNotIn("Unreachable", result.stdout)
 
     def test_empty_array_remains_valid_when_allocator_returns_null(self):
+        """Verify null-backed empty arrays retain zero length and trap on reads."""
         result = self._run_source_with_failing_malloc(
             "func make_empty() { [] }\n"
             "func forward(values) { values }\n"
@@ -231,6 +237,7 @@ class NativeExampleTests(unittest.TestCase):
         self.assertNotIn("Unreachable", read_result.stdout)
 
     def test_nonempty_array_allocation_failures_trap_before_initialization(self):
+        """Verify failed array allocations trap before element or later effects."""
         result = self._run_source_with_failing_malloc(
             "func side_effect() {\n"
             '  print("Evaluated element")\n'
@@ -271,6 +278,7 @@ class NativeExampleTests(unittest.TestCase):
                 self.assertNotIn("Unreachable", case_result.stdout)
 
     def test_string_allocation_failures_trap_without_reaching_following_code(self):
+        """Verify failed concatenation and slice allocations stop execution."""
         cases = {
             "concat": 'func main() { print("he" + "llo") print("Unreachable") }',
             "slice": 'func main() { print(slice("hello", 0, 2)) print("Unreachable") }',

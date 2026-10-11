@@ -160,6 +160,7 @@ class BackendTests(unittest.TestCase):
         self.assertIn('call {i64*, i64} @"make"', llvm_ir)
 
     def test_nonempty_array_allocation_guard_precedes_element_evaluation_and_stores(self):
+        """Verify allocation guards precede array element evaluation and storage."""
         from compiler.compiler import compile_source
         from llvmlite import binding
 
@@ -193,6 +194,7 @@ class BackendTests(unittest.TestCase):
             self.assertTrue(any(inst.opcode == "insertvalue" for inst in blocks["alloc.ok"]))
 
     def test_empty_array_allocation_omits_failure_trap(self):
+        """Verify empty arrays retain their aggregate without an allocation trap."""
         from compiler.compiler import compile_source
         from llvmlite import binding
 
